@@ -1,39 +1,6 @@
-# local/private material
-private/
-.env
-.env.*
-*.secret
-*.key
-*.pem
-*.p12
-*.pfx
-
-# logs and documentation drafts
-logs/
-log/
-*.log
-docs/private/
-docs/logs/
-*_LOG.txt
-*LOG*.txt
-walkthrough.md
-task.md
-
-# build output and firmware binaries
 build/
-dist/
-out/
-.cache/
 *.bin
 *.elf
-*.map
-*.hex
-*.zip
-arduino-cli/
-arduino-cli.zip
-
-# operating system/editor noise
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+*.merged.bin
+.system_generated/
+*.log

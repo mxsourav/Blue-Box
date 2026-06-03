@@ -1,0 +1,45 @@
+================================================================================
+                        HIZMOS FIRMWARE — VERSION LOG
+                        (Major Changes Only — Minor Skipped)
+================================================================================
+
+PROJECT  : Gaar Fata — HIZMOS Flipper Zero Replica
+BOARD    : ESP32-S3 (N16R8 / N8R2)
+DISPLAY  : SH1106 1.3" OLED (128x64) via I2C
+AUTHOR   : Custom Build
+STARTED  : 2026-06-02
+
+================================================================================
+ FORMAT:  [VERSION] — [DATE] — [SUMMARY]
+================================================================================
+
+------------------------------------------------------------------------------
+ v1.0.0 — 2026-06-02 — INITIAL STOCK FORK + CUSTOM PIN REMAP
+------------------------------------------------------------------------------
+ SOURCE   : Hizmos-main (HIKTRON Open Source)
+ CHANGE   : Full GPIO button remap for custom ESP32-S3 wiring layout
+ DETAILS  :
+   • BTN_UP      :  GPIO 4  →  GPIO 5
+   • BTN_DOWN    :  GPIO 5  →  GPIO 6
+   • BTN_SELECT  :  GPIO 6  →  GPIO 11
+   • BTN_BACK    :  GPIO 7  →  GPIO 10
+   • BTN_LEFT    :  GPIO 1  →  GPIO 7
+   • BTN_RIGHT   :  GPIO 2  →  GPIO 4
+   • I2C SDA/SCL :  GPIO 8/9 (unchanged, already correct)
+ IMPACT   : GPIO 10/11 were previously nRF24 CE1/CSN1 — potential conflict
+            if nRF24 radio1 is used simultaneously with buttons.
+ STATUS   : Compiled & Flashed
+
+------------------------------------------------------------------------------
+ v1.1.0 — [PENDING] — [NEXT MAJOR CHANGE]
+------------------------------------------------------------------------------
+ CHANGE   : [describe here]
+ DETAILS  : [bullet points]
+ STATUS   : [Compiled / Tested / Flashed]
+
+================================================================================
+ NOTES:
+  — Only MAJOR changes are logged (pin remaps, feature adds, architecture).
+  — Minor tweaks (comment edits, formatting, typo fixes) are NOT logged.
+  — Each entry must include: what changed, why, and current status.
+================================================================================

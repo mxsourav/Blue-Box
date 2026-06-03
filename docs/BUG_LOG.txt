@@ -1,0 +1,55 @@
+================================================================================
+                         HIZMOS FIRMWARE — BUG LOG
+================================================================================
+
+PROJECT  : Gaar Fata — HIZMOS Flipper Zero Replica
+BOARD    : ESP32-S3
+
+================================================================================
+ SEVERITY LEVELS:
+   [CRITICAL]  — Device crashes, won't boot, data loss
+   [HIGH]      — Feature completely broken, no workaround
+   [MEDIUM]    — Feature partially broken, workaround exists
+   [LOW]       — Cosmetic, minor annoyance, edge case
+================================================================================
+ STATUS:
+   [OPEN]      — Confirmed, not yet fixed
+   [WIP]       — Fix in progress
+   [FIXED]     — Fix applied (see FIX_LOG.txt for details)
+   [WONTFIX]   — Known issue, accepted as-is
+   [CANNOT-REPRODUCE] — Could not reproduce
+================================================================================
+
+──────────────────────────────────────────────────────────────────────────────
+ BUG #001 — [MEDIUM] [OPEN] — nRF24 Radio1 Pin Conflict
+──────────────────────────────────────────────────────────────────────────────
+ DATE FOUND    : 2026-06-02
+ VERSION       : v1.0.0
+ DESCRIPTION   : GPIO 10 and GPIO 11 are now assigned to BTN_BACK and
+                 BTN_SELECT respectively, but the nRF24 radio1 module
+                 still defines CE1_PIN=10 and CSN1_PIN=11.
+ REPRODUCTION  : Attempt to use nRF24 radio1 features while buttons
+                 are also active — pin contention will occur.
+ EXPECTED      : Buttons and nRF24 radio1 work independently.
+ ACTUAL        : Both peripherals share the same GPIO pins.
+ WORKAROUND    : Avoid using nRF24 radio1 features, or reassign
+                 CE1/CSN1 to free GPIOs if available.
+ ASSIGNED TO   : —
+ NOTES         : radio2 (CE2=12, CSN2=13) is unaffected.
+
+──────────────────────────────────────────────────────────────────────────────
+ BUG #002 — [SEVERITY] [STATUS] — [Title]
+──────────────────────────────────────────────────────────────────────────────
+ DATE FOUND    :
+ VERSION       :
+ DESCRIPTION   :
+ REPRODUCTION  :
+ EXPECTED      :
+ ACTUAL        :
+ WORKAROUND    :
+ ASSIGNED TO   :
+ NOTES         :
+
+================================================================================
+ TEMPLATE — Copy the block above for each new bug entry.
+================================================================================

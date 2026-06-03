@@ -1,0 +1,58 @@
+================================================================================
+                         HIZMOS FIRMWARE — FIX LOG
+================================================================================
+
+PROJECT  : Gaar Fata — HIZMOS Flipper Zero Replica
+BOARD    : ESP32-S3
+
+================================================================================
+ Each fix references a BUG_LOG.txt entry by bug number.
+ Document: what was wrong, what was changed, and how it was verified.
+================================================================================
+
+──────────────────────────────────────────────────────────────────────────────
+ FIX #001 — v1.0.0 — Button Pin Mismatch (Pre-release fix)
+──────────────────────────────────────────────────────────────────────────────
+ DATE          : 2026-06-02
+ BUG REF       : N/A (initial configuration, not a runtime bug)
+ FILE CHANGED  : Main/HIZMOS_OLED_U8G2lib.ino (lines 215–222)
+ BEFORE:
+   #define BTN_UP     4
+   #define BTN_DOWN   5
+   #define BTN_SELECT 6
+   #define BTN_BACK   7
+   #define BTN_LEFT   1
+   #define BTN_RIGHT  2
+ AFTER:
+   #define BTN_UP     5
+   #define BTN_DOWN   6
+   #define BTN_SELECT 11
+   #define BTN_BACK   10
+   #define BTN_LEFT   7
+   #define BTN_RIGHT  4
+ REASON        : Custom ESP32-S3 PCB/wiring uses different GPIO assignments
+                 than the original Hizmos reference design.
+ VERIFIED BY   : Compile test → Flash → Button press confirmation
+ SIDE EFFECTS  : GPIO 10/11 conflict with nRF24 radio1 (see BUG #001)
+
+──────────────────────────────────────────────────────────────────────────────
+ FIX #002 — v1.0.1 — Custom Pin Re-allocation, Debounce, 33Hz Scrolling UI
+──────────────────────────────────────────────────────────────────────────────
+ DATE          : 2026-06-04
+ BUG REF       : N/A (User requested rewiring adjustment)
+ FILE CHANGED  : Main/HIZMOS_OLED_U8G2lib.ino, Main/mainmenu.ino
+ BEFORE        :
+   BTN_UP=5, BTN_DOWN=11, BTN_SELECT=4, BTN_BACK=7, BTN_LEFT=6, BTN_RIGHT=10
+   One-shot pulse button state read; 130ms submenu loop refresh.
+ AFTER         :
+   BTN_UP=4, BTN_DOWN=11, BTN_LEFT=6, BTN_RIGHT=10, BTN_SELECT=5, BTN_BACK=7
+   Slowly-latching physical debounced state read; 33Hz smooth-scroll main menu UI and 30ms submenu loop.
+ REASON        : User rewired D-pad and function buttons on custom hardware.
+                 Debouncing improvements fix missed clicks and double/triple click jumps.
+                 33Hz scrolling provides premium interface aesthetics.
+ VERIFIED BY   : Compile test → Upload → Manual button press & UI testing
+ SIDE EFFECTS  : GPIO 10/11 conflict remains but moves from Back/Select to Up/Left.
+
+================================================================================
+ TEMPLATE — Copy the block above for each new fix entry.
+================================================================================

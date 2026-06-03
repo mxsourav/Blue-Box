@@ -1,0 +1,99 @@
+================================================================================
+                    HIZMOS FIRMWARE — PIN DIAGRAM LOG
+                    ESP32-S3 Custom Wiring (Gaar Fata Build)
+================================================================================
+
+LAST UPDATED : 2026-06-02  (v1.0.0)
+BOARD        : ESP32-S3 (N16R8 or N8R2)
+
+================================================================================
+                          ACTIVE PIN ASSIGNMENTS
+================================================================================
+
+ ┌─────────────────────────────────────────────────────────────────────────┐
+ │  COMPONENT              │  GPIO PIN  │  DIRECTION  │  NOTES           │
+ ├─────────────────────────┼────────────┼─────────────┼──────────────────┤
+ │                         │            │             │                  │
+ │  ── I2C (OLED) ──────── │            │             │                  │
+ │  OLED SDA               │  GPIO 8    │  I/O        │  I2C Data        │
+ │  OLED SCL               │  GPIO 9    │  OUTPUT     │  I2C Clock       │
+ │  OLED VCC               │  3V3/5V0   │  POWER      │  Depends on OLED │
+ │  OLED GND               │  GND       │  POWER      │  Ground rail     │
+ │                         │            │             │                  │
+ │  ── BUTTONS ──────────── │            │             │                  │
+ │  BTN_UP                 │  GPIO 4    │  INPUT_PU   │  Active LOW      │
+ │  BTN_DOWN               │  GPIO 11   │  INPUT_PU   │  Active LOW ⚠️   │
+ │  BTN_LEFT               │  GPIO 6    │  INPUT_PU   │  Active LOW      │
+ │  BTN_RIGHT              │  GPIO 10   │  INPUT_PU   │  Active LOW ⚠️   │
+ │  BTN_SELECT (OK)        │  GPIO 5    │  INPUT_PU   │  Active LOW      │
+ │  BTN_BACK               │  GPIO 7    │  INPUT_PU   │  Active LOW      │
+ │  Button GNDs            │  GND       │  POWER      │  All to ground   │
+ │                         │            │             │                  │
+ │  ── IR ───────────────── │            │             │                  │
+ │  IR Sender              │  GPIO 35   │  OUTPUT     │  IR LED          │
+ │  IR Receiver            │  GPIO 36   │  INPUT      │  IR Receiver     │
+ │                         │            │             │                  │
+ │  ── nRF24 (FSPI) ────── │            │             │                  │
+ │  NRF_SCK                │  GPIO 18   │  OUTPUT     │  SPI Clock       │
+ │  NRF_MISO               │  GPIO 16   │  INPUT      │  SPI Data In     │
+ │  NRF_MOSI               │  GPIO 17   │  OUTPUT     │  SPI Data Out    │
+ │  CE1 (Radio 1)          │  GPIO 10   │  OUTPUT     │  ⚠️ CONFLICT     │
+ │  CSN1 (Radio 1)         │  GPIO 11   │  OUTPUT     │  ⚠️ CONFLICT     │
+ │  CE2 (Radio 2)          │  GPIO 12   │  OUTPUT     │  OK              │
+ │  CSN2 (Radio 2)         │  GPIO 13   │  OUTPUT     │  OK              │
+ │                         │            │             │                  │
+ │  ── CC1101 (SPI) ────── │            │             │                  │
+ │  CC1101_SCK             │  GPIO 15   │  OUTPUT     │  SPI Clock       │
+ │  CC1101_MISO            │  GPIO 3    │  INPUT      │  SPI Data In     │
+ │  CC1101_MOSI            │  GPIO 46   │  OUTPUT     │  SPI Data Out    │
+ │  CC1101 #1 CS           │  GPIO 45   │  OUTPUT     │                  │
+ │  CC1101 #1 GDO0         │  GPIO 21   │  INPUT      │  Interrupt       │
+ │  CC1101 #1 GDO2         │  GPIO 47   │  INPUT      │                  │
+ │  CC1101 #2 CS           │  GPIO 40   │  OUTPUT     │                  │
+ │  CC1101 #2 GDO0         │  GPIO 41   │  INPUT      │  Interrupt       │
+ │  CC1101 #2 GDO2         │  GPIO 42   │  INPUT      │                  │
+ │                         │            │             │                  │
+ │  ── SD CARD (HSPI) ──── │            │             │                  │
+ │  SD_SCK                 │  GPIO 14   │  OUTPUT     │  SPI Clock       │
+ │  SD_MISO                │  GPIO 39   │  INPUT      │  SPI Data In     │
+ │  SD_MOSI                │  GPIO 38   │  OUTPUT     │  SPI Data Out    │
+ │  SD_CS                  │  GPIO 37   │  OUTPUT     │  Chip Select     │
+ │  SD_DETECT              │  GPIO 0    │  INPUT_PU   │  Card detect     │
+ │                         │            │             │                  │
+ │  ── NeoPixel LED ────── │            │             │                  │
+ │  LED_PIN                │  GPIO 48   │  OUTPUT     │  WS2812 Data     │
+ │                         │            │             │                  │
+ └─────────────────────────┴────────────┴─────────────┴──────────────────┘
+
+================================================================================
+                        ⚠️  PIN CONFLICTS
+================================================================================
+
+  CONFLICT #1:
+    GPIO 10 → BTN_RIGHT (INPUT_PULLUP) vs CE1_PIN / nRF24 Radio1 (OUTPUT)
+    GPIO 11 → BTN_DOWN (INPUT_PULLUP) vs CSN1_PIN / nRF24 Radio1 (OUTPUT)
+
+    IMPACT : nRF24 Radio1 cannot operate while buttons use these pins.
+             Radio2 (GPIO 12/13) is unaffected.
+    RESOLUTION : Reassign CE1/CSN1 to free GPIOs, or disable Radio1.
+
+================================================================================
+                        FREE GPIOs (NOT ASSIGNED)
+================================================================================
+
+  GPIO 1  — Previously BTN_LEFT (now free)
+  GPIO 2  — Previously BTN_RIGHT (now free)
+  GPIO 19 — Available (USB D- on some boards, check your module)
+  GPIO 20 — Available (USB D+ on some boards, check your module)
+  GPIO 43 — Available (TX0)
+  GPIO 44 — Available (RX0)
+
+================================================================================
+                        PIN CHANGE HISTORY
+================================================================================
+
+  DATE        VERSION   PINS CHANGED              REASON
+  2026-06-02  v1.0.0    BTN_UP/DOWN/SELECT/       Custom ESP32-S3 wiring
+                        BACK/LEFT/RIGHT           layout (Gaar Fata build)
+
+================================================================================

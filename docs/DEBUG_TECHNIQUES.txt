@@ -1,0 +1,157 @@
+================================================================================
+              HIZMOS FIRMWARE — MAJOR BUG SOLVING TECHNIQUES
+              Debug Methodology & Post-Mortem Documentation
+================================================================================
+
+PROJECT  : Gaar Fata — HIZMOS Flipper Zero Replica
+BOARD    : ESP32-S3
+
+================================================================================
+ This document records MAJOR debugging sessions — techniques used,
+ root causes found, and lessons learned. Update after every significant
+ debug session.
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 1: GENERAL DEBUG TOOLKIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ 1.1  SERIAL MONITOR
+      — Always start with Serial.begin(9600) in setup()
+      — Use Serial.println() at key checkpoints
+      — Monitor via: Arduino IDE → Tools → Serial Monitor (9600 baud)
+      — On ESP32-S3: USB CDC serial works at any baud rate
+
+ 1.2  LED INDICATOR (NeoPixel on GPIO 48)
+      — Use setColor(R,G,B) to signal states:
+        RED    = Error / Fault
+        GREEN  = OK / Success
+        BLUE   = Waiting / Idle
+        YELLOW = Warning / In-progress
+      — Useful when Serial is not available
+
+ 1.3  BUTTON TEST ROUTINE
+      — Quick test: print button states in a loop:
+        void testButtons() {
+          Serial.print("UP:"); Serial.print(digitalRead(BTN_UP));
+          Serial.print(" DN:"); Serial.print(digitalRead(BTN_DOWN));
+          Serial.print(" LF:"); Serial.print(digitalRead(BTN_LEFT));
+          Serial.print(" RT:"); Serial.print(digitalRead(BTN_RIGHT));
+          Serial.print(" BK:"); Serial.print(digitalRead(BTN_BACK));
+          Serial.print(" OK:"); Serial.println(digitalRead(BTN_SELECT));
+          delay(200);
+        }
+      — Expected: 1 (HIGH) when not pressed, 0 (LOW) when pressed
+
+ 1.4  I2C SCANNER
+      — Built into firmware: i2c-scanner.ino
+      — Verifies OLED is detected on SDA=8, SCL=9
+      — Expected address: 0x3C (SSD1306) or 0x3C (SH1106)
+
+ 1.5  SPI DEVICE CHECK
+      — For CC1101: ELECHOUSE_cc1101.getCC1101() returns true if found
+      — For nRF24: radio1.begin() / radio2.begin() returns true if found
+      — For SD Card: SD.begin(SD_CS, SD_SPI) returns true if mounted
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 2: COMMON ESP32-S3 ISSUES & SOLUTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ 2.1  BOOT LOOP / CRASH ON STARTUP
+      SYMPTOMS  : Device restarts repeatedly, Serial shows "rst:..." messages
+      CAUSES    : Stack overflow, bad pin init, watchdog timeout
+      TECHNIQUE :
+        a) Check Serial for backtrace → decode with addr2line
+        b) Comment out setup() sections one by one to isolate
+        c) Check for GPIO conflicts (two peripherals on same pin)
+        d) Increase stack size: CONFIG_MAIN_TASK_STACK_SIZE
+
+ 2.2  OLED BLANK / NO DISPLAY
+      SYMPTOMS  : Board boots but OLED shows nothing
+      TECHNIQUE :
+        a) Run I2C scanner — is 0x3C detected?
+        b) Check SDA/SCL wiring (GPIO 8/9)
+        c) Verify correct driver:
+           SH1106  → U8G2_SH1106_128X64_NONAME_F_HW_I2C
+           SSD1306 → U8G2_SSD1306_128X64_NONAME_F_HW_I2C
+        d) Check VCC voltage (3.3V vs 5V for your specific OLED)
+
+ 2.3  BUTTONS NOT RESPONDING
+      SYMPTOMS  : Menu doesn't navigate, no button input detected
+      TECHNIQUE :
+        a) Run testButtons() routine (see 1.3 above)
+        b) Verify INPUT_PULLUP is set for each button pin
+        c) Check physical wiring: button → GPIO, button → GND
+        d) Check for pin conflicts in PIN_DIAGRAM.txt
+        e) Verify debounce delay (currently 150ms)
+        f) Check that no other peripheral is driving the same pin
+
+ 2.4  SD CARD NOT DETECTED
+      SYMPTOMS  : "No SD" animation plays, files menu fails
+      TECHNIQUE :
+        a) Check SD_DETECT_PIN (GPIO 0) — LOW = card inserted
+        b) Verify HSPI pins: SCK=14, MISO=39, MOSI=38, CS=37
+        c) Test with a different SD card (some cards are incompatible)
+        d) Check if SD_CS is being deactivated (HIGH) by other SPI devices
+        e) Ensure SD_SPI.begin() is called before SD.begin()
+
+ 2.5  PIN CONFLICT DEBUGGING
+      SYMPTOMS  : Two features interfere with each other
+      TECHNIQUE :
+        a) Open PIN_DIAGRAM.txt — check for duplicate GPIO usage
+        b) Use oscilloscope/logic analyzer on the contested pin
+        c) Temporarily disable one peripheral to test the other
+        d) If conflict is confirmed, reassign one to a FREE GPIO
+           (see FREE GPIOs section in PIN_DIAGRAM.txt)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 3: DEBUG SESSION LOG (Post-Mortem Records)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Fill in after each major debug session:
+
+──────────────────────────────────────────────────────────────────────────────
+ SESSION #001 — [DATE] — [Bug Title]
+──────────────────────────────────────────────────────────────────────────────
+ BUG REF       : BUG #___ from BUG_LOG.txt
+ SYMPTOM       :
+ INITIAL THEORY:
+ TECHNIQUE USED:
+   Step 1:
+   Step 2:
+   Step 3:
+ ROOT CAUSE    :
+ FIX APPLIED   :
+ TIME SPENT    :
+ LESSON LEARNED:
+
+──────────────────────────────────────────────────────────────────────────────
+ SESSION #002 — [DATE] — [Bug Title]
+──────────────────────────────────────────────────────────────────────────────
+ [Copy template above]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SECTION 4: USEFUL COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ COMPILE (UTF-8):
+   chcp 65001
+   arduino-cli compile --fqbn esp32:esp32:esp32s3 --output-dir ./build Main/
+
+ FLASH:
+   arduino-cli upload -p COMx --fqbn esp32:esp32:esp32s3 Main/
+
+ SERIAL MONITOR:
+   arduino-cli monitor -p COMx --config baudrate=9600
+
+ LIST CONNECTED BOARDS:
+   arduino-cli board list
+
+ DECODE BACKTRACE (after crash):
+   xtensa-esp32s3-elf-addr2line -e build/HIZMOS_OLED_U8G2lib.ino.elf <addr>
+
+================================================================================
