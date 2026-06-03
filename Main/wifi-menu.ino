@@ -62,7 +62,10 @@ static const unsigned char image_wifi_50_bits[] U8X8_PROGMEM = {0x80,0x0f,0x00,0
        WiFi.mode(WIFI_STA);
        WiFi.disconnect();
        delay(100);
-       wifi_networkCount = WiFi.scanNetworks();
+       WiFi.scanNetworks(true, true); // Start async scan (async=true, show_hidden=true)
+       wifi_networkCount = -1; // -1 represents that scan is running/active
+       wifi_selectedIndex = 0;
+       wifi_showInfo = false;
 
       runLoop(scanningwifi);
        

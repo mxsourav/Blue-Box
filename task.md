@@ -1,8 +1,17 @@
-# Checklist
+# Checklist - WiFi, LED, and Screen Wake Fix
 
-- [x] Copy backup files from `Main/` back to `HIZMOS_OLED_U8G2lib/`.
-- [x] Configure final button pins in `HIZMOS_OLED_U8G2lib.ino` (UP=4, DOWN=11, LEFT=6, RIGHT=10, SELECT=5, BACK=7).
-- [x] Synchronize final files to the `Main/` backup folder.
-- [x] Copy the `task.md` locally to the project workspace directory.
-- [x] Compile and flash the full Hizmos firmware to the ESP32-S3 board on COM9.
-- [x] Verify that all buttons work, double-click BACK collapses menus, and scrolling is smooth.
+- [x] Modify `HIZMOS_OLED_U8G2lib.ino`
+  - [x] Implement RMT-free WS2812B bitbang driver
+  - [x] Implement RTC memory boot-count tracker
+  - [x] Implement reset reason detection and diagnostic LED modes in `setup()`
+  - [x] Update `handleButtons()` to only wake with `BTN_SELECT` (OK button)
+  - [x] Update `loop()` to handle flashing diagnostic LED and reset `rtcBootCount`
+- [x] Modify `wifi-menu.ino`
+  - [x] Change to asynchronous WiFi scanning
+- [x] Modify `wifi-scanning.ino`
+  - [x] Handle scanning animation and completion polling
+  - [x] Add bounds checks to prevent out-of-bounds index reads
+- [x] Verification
+  - [x] Compile firmware
+  - [x] Flash firmware to COM9
+  - [x] Verify WiFi scanning, LED color codes, and screen wake button behaviors

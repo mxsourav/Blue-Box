@@ -119,11 +119,71 @@ bool wifi_showInfo = false;
 #define LED_PIN    48   
 #define LED_COUNT  1    
 
-Adafruit_NeoPixel pixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800); 
+// RMT-free high-precision bitbang driver for WS2812B on ESP32-S3 (GPIO 48)
+#include "soc/gpio_reg.h"
+
+// Define RTC memory variables to track successive boots and crashed states
+RTC_DATA_ATTR int rtcBootCount = 0;
+
+// Diagnostic LED active states
+uint8_t diagR = 0, diagG = 0, diagB = 0;
+bool diagFlash = false;
+unsigned long diagStartTime = 0;
+const unsigned long DIAG_SHOW_DURATION = 10000; // Show diagnostic LED for 10 seconds on boot
+
+void bitbangWS2812(uint8_t pin, uint8_t r, uint8_t g, uint8_t b) {
+  uint32_t color = ((uint32_t)g << 16) | ((uint32_t)r << 8) | b;
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, LOW);
+  delayMicroseconds(80); // Reset pulse
+  
+  uint32_t pinBit;
+  uint32_t reg_ts, reg_tc;
+  if (pin >= 32) {
+    pinBit = 1ULL << (pin - 32);
+    reg_ts = GPIO_OUT1_W1TS_REG;
+    reg_tc = GPIO_OUT1_W1TC_REG;
+  } else {
+    pinBit = 1ULL << pin;
+    reg_ts = GPIO_OUT_W1TS_REG;
+    reg_tc = GPIO_OUT_W1TC_REG;
+  }
+  
+  // Inline assembly cycle counter helper (Xtensa CCOUNT)
+  auto get_cycles = []() -> uint32_t {
+    uint32_t ccount;
+    asm volatile("rsr %0, ccount" : "=r"(ccount));
+    return ccount;
+  };
+  
+  portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
+  portENTER_CRITICAL(&myMutex);
+  
+  for (int i = 23; i >= 0; i--) {
+    if ((color >> i) & 1) {
+      REG_WRITE(reg_ts, pinBit);
+      uint32_t start = get_cycles();
+      while ((get_cycles() - start) < 168); // 0.7us at 240MHz
+      REG_WRITE(reg_tc, pinBit);
+      start = get_cycles();
+      while ((get_cycles() - start) < 144); // 0.6us at 240MHz
+    } else {
+      REG_WRITE(reg_ts, pinBit);
+      uint32_t start = get_cycles();
+      while ((get_cycles() - start) < 84);  // 0.35us at 240MHz
+      REG_WRITE(reg_tc, pinBit);
+      start = get_cycles();
+      while ((get_cycles() - start) < 192); // 0.8us at 240MHz
+    }
+  }
+  
+  portEXIT_CRITICAL(&myMutex);
+  delayMicroseconds(80); // Reset pulse
+}
 
 //  function to set color FOR NEO PIXEL LED (R,G,B) 
 void setColor(uint8_t r, uint8_t g, uint8_t b) {
-  // NeoPixel disabled to avoid RMT driver conflict with IR transceiver
+  bitbangWS2812(LED_PIN, r, g, b);
 }
 
 
@@ -750,54 +810,36 @@ void runLoop(void (*func)()) {
 /////////////////////////////////////////////////////////////////////////
 
 void handleButtons() {
-  static unsigned long lastInputTime = 0; // 
-  bool buttonPressed = false;
-
-  
+  static unsigned long lastInputTime = 0; 
   if (millis() - lastInputTime > 150) {
-
-    
-    if (digitalRead(BTN_UP) == LOW) {
-      Serial.println("[BUTTON] UP pressed!");
-      manualImageIndex = (manualImageIndex - 1 + totalManualImages) % totalManualImages;
-      autoMode = false;        
-      buttonPressed = true;     
+    if (autoMode) {
+      // Idle dolphin state: only BTN_SELECT (OK button) can open the menu
+      if (digitalRead(BTN_SELECT) == LOW) {
+        Serial.println("[BUTTON] SELECT pressed, opening menu!");
+        autoMode = false;
+        lastButtonPressTime = millis();
+        lastInputTime = millis();
+      }
+    } else {
+      // Menu state: any button press updates lastButtonPressTime to reset screensaver timer
+      bool activity = false;
+      if (digitalRead(BTN_UP) == LOW || digitalRead(BTN_DOWN) == LOW || 
+          digitalRead(BTN_LEFT) == LOW || digitalRead(BTN_RIGHT) == LOW || 
+          digitalRead(BTN_SELECT) == LOW) {
+        activity = true;
+      }
+      
+      if (digitalRead(BTN_BACK) == LOW) {
+        Serial.println("[BUTTON] BACK pressed, entering screensaver!");
+        autoMode = true;
+        activity = true;
+      }
+      
+      if (activity) {
+        lastButtonPressTime = millis();
+        lastInputTime = millis();
+      }
     }
-
-    
-    if (digitalRead(BTN_DOWN) == LOW) {
-      Serial.println("[BUTTON] DOWN pressed!");
-      manualImageIndex = (manualImageIndex + 1) % totalManualImages;
-      autoMode = false;
-      buttonPressed = true;
-    }
-
-    
-    if (digitalRead(BTN_LEFT) == LOW) {
-      Serial.println("[BUTTON] LEFT pressed!");
-      autoMode = false;
-      buttonPressed = true;
-    }
-
-    
-    if (digitalRead(BTN_RIGHT) == LOW) {
-      Serial.println("[BUTTON] RIGHT pressed!");
-      autoMode = false;
-      buttonPressed = true;
-    }
-
-    
-    if (digitalRead(BTN_BACK) == LOW) {
-      Serial.println("[BUTTON] BACK pressed!");
-      autoMode = true;         
-      buttonPressed = false;    
-    }
-
-    if (buttonPressed) {
-      lastButtonPressTime = millis();  
-    }
-
-    lastInputTime = millis(); 
   }
 }
 
@@ -883,6 +925,50 @@ void setup() {
   delay(1000);
   Serial.println("--- HIZMOS BOOT START ---");
 
+  // --- DIAGNOSTIC LED CODE ---
+  rtcBootCount++;
+  esp_reset_reason_t reason = esp_reset_reason();
+  diagStartTime = millis();
+
+  if (rtcBootCount > 3) {
+    // Boot loop
+    diagR = 255; diagG = 0; diagB = 0; // Red
+    diagFlash = true;
+    Serial.println("DIAGNOSTIC: Boot loop detected (Flashing Red)");
+  } else if (reason == ESP_RST_PANIC) {
+    // Memory crash / software panic
+    diagR = 255; diagG = 0; diagB = 255; // Magenta
+    diagFlash = false;
+    Serial.println("DIAGNOSTIC: Memory panic/crash detected (Magenta)");
+  } else if (reason == ESP_RST_TASK_WDT || reason == ESP_RST_INT_WDT || reason == ESP_RST_WDT) {
+    // Watchdog reset / CPU stuck
+    diagR = 255; diagG = 255; diagB = 0; // Yellow
+    diagFlash = false;
+    Serial.println("DIAGNOSTIC: Watchdog reset/CPU stuck detected (Yellow)");
+  } else if (reason == ESP_RST_BROWNOUT) {
+    // Brownout reset
+    diagR = 0; diagG = 255; diagB = 255; // Cyan
+    diagFlash = false;
+    Serial.println("DIAGNOSTIC: Brownout detected (Cyan)");
+  } else if (reason == ESP_RST_POWERON) {
+    // Normal boot
+    diagR = 0; diagG = 255; diagB = 0; // Green
+    diagFlash = false;
+    Serial.println("DIAGNOSTIC: Normal Power-on (Green)");
+  } else if (reason == ESP_RST_SW) {
+    // Software reset
+    diagR = 0; diagG = 0; diagB = 255; // Blue
+    diagFlash = false;
+    Serial.println("DIAGNOSTIC: Software Reset (Blue)");
+  } else {
+    diagR = 0; diagG = 0; diagB = 255; // Blue
+    diagFlash = false;
+    Serial.printf("DIAGNOSTIC: Other Reset reason %d (Blue)\n", reason);
+  }
+
+  // Set the diagnostic LED color immediately on boot
+  setColor(diagR, diagG, diagB);
+
   Serial.println("Initializing buttons...");
   pinMode(BTN_UP, INPUT_PULLUP);
   pinMode(BTN_DOWN, INPUT_PULLUP);
@@ -954,7 +1040,27 @@ void loop() {
   handleButtons();
   autoModeCheck();
 
-  setColor(0, 0, 0);
+  // Reset boot count if system runs stably for 10 seconds
+  if (millis() > 10000 && rtcBootCount > 0) {
+    rtcBootCount = 0;
+  }
+
+  // Manage diagnostic LED behavior during the first 10 seconds of boot
+  if (millis() - diagStartTime < DIAG_SHOW_DURATION) {
+    if (diagFlash) {
+      // Flash the LED (e.g. toggle every 250ms)
+      if ((millis() / 250) % 2 == 0) {
+        setColor(diagR, diagG, diagB);
+      } else {
+        setColor(0, 0, 0);
+      }
+    } else {
+      setColor(diagR, diagG, diagB);
+    }
+  } else {
+    // Normal operation: turn off LED (set to black)
+    setColor(0, 0, 0);
+  }
   
   if (autoMode) {
     gotoMainMenuFlag = false; // Reset the escape flag in screensaver
