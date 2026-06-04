@@ -1,3 +1,6 @@
+void runTVBGone();
+void resetTVBGone();
+
 void handlesuniversalremotemenu() {
   const char* menuItems[] = {"TV", "AC", "PROJECTOR", "CAMERAS"};
   const int menuLength = sizeof(menuItems) / sizeof(menuItems[0]);
@@ -33,7 +36,10 @@ void handlesuniversalremotemenu() {
     
     if (digitalRead(BTN_SELECT) == LOW) {
       switch (selectedItem) {
-        case 0: runLoop(loading); break;
+        case 0: 
+          runLoop(runTVBGone); 
+          resetTVBGone(); 
+          break;
         case 1: runLoop(loading); break;
         case 2: runLoop(loading); break;
         case 3:  runLoop(loading);break;

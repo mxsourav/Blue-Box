@@ -1,18 +1,14 @@
 void handlesettingsmenu() {
-  const char* menuItems[] = {"show usage", "format sd", "restart", "batt info", "sd info", "about","check sys devices"};
+  const char* menuItems[] = {"show usage", "format sd", "restart", "batt info", "sd info", "about", "check sys devices", "invert ui"};
   const int menuLength = sizeof(menuItems) / sizeof(menuItems[0]);
   const int visibleItems = 3;
 
   static int selectedItem = 0;
   static int scrollOffset = 0;
-
- 
   static unsigned long lastInputTime = 0;
 
-  
   if (millis() - lastInputTime > 150) {
 
-  // ===== التعامل مع الأزرار =====
   if (digitalRead(BTN_UP) == LOW) {
     selectedItem--;
     if (selectedItem < 0) selectedItem = menuLength - 1;
@@ -33,11 +29,9 @@ void handlesettingsmenu() {
        runLoop(datausage);
         break;
       case 1:
-      if (!SD.begin(SD_CS)) {
-            
+      if (!SD.begin(SD_CS, SD_SPI)) {
            runLoop(drawnosdcard);
             }
-
             drawBoxMessage("Do you want to", "format SD card?", "Press SELECT to continue");
         runLoop(sdformater);
        break;
@@ -46,35 +40,34 @@ void handlesettingsmenu() {
        runLoop(restartesp);
         break;
       case 3: 
-      
        break;
       case 4:
-
-      if (!SD.begin(SD_CS)) {
-   
-    runLoop(drawnosdcard);
-  }
-
+      if (!SD.begin(SD_CS, SD_SPI)) {
+        runLoop(drawnosdcard);
+      }
         sdinfo_readStats();
         sdinfo_drawMainScreen();
        runLoop(showsdinfo);
         break;
-        case 5:
+      case 5:
        runLoop(about);
         break;
-
-        case 6:
+      case 6:
         runLoop(checksysdevices);
         break;
-        
+      case 7:
+        // Toggle display inversion — hardware command, zero CPU cost
+        invertUI = !invertUI;
+        applyDisplayInvert();
+        break;
     }
 
     lastInputTime = millis(); 
   }
   }
-  // ===== عرض الشاشة =====
+  // ===== Display =====
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_7x14_tf); // Nice clean font
+  u8g2.setFont(u8g2_font_7x14_tf);
 
   for (int i = 0; i < visibleItems; i++) {
     int menuIndex = i + scrollOffset;
@@ -83,8 +76,8 @@ void handlesettingsmenu() {
     int y = i * 20 + 16;
 
     if (menuIndex == selectedItem) {
-      u8g2.drawRBox(4, y - 12, 120, 16, 4); // Rounded highlight
-      u8g2.setDrawColor(0); // black text on white box
+      u8g2.drawRBox(4, y - 12, 120, 16, 4);
+      u8g2.setDrawColor(0);
       u8g2.drawStr(10, y, menuItems[menuIndex]);
       u8g2.setDrawColor(1);
     } else {
@@ -105,5 +98,6 @@ void handlesettingsmenu() {
   }
 
   u8g2.sendBuffer();
- 
 }
+
+

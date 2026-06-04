@@ -1,5 +1,5 @@
 void handlewifimenu() {
-  const char* menuItems[] = {"SCAN WIFI", "PACKET ANALYZER", "BEACON", "CAPTIVE PORTAL", "DEAUTH DETECTOR"};
+  const char* menuItems[] = {"SCAN WIFI", "PACKET ANALYZER", "BEACON", "CAPTIVE PORTAL", "DEAUTH DETECTOR", "DEAUTHER"};
   const int menuLength = sizeof(menuItems) / sizeof(menuItems[0]);
   const int visibleItems = 3;
 
@@ -62,10 +62,7 @@ static const unsigned char image_wifi_50_bits[] U8X8_PROGMEM = {0x80,0x0f,0x00,0
        WiFi.mode(WIFI_STA);
        WiFi.disconnect();
        delay(100);
-       WiFi.scanNetworks(true, true); // Start async scan (async=true, show_hidden=true)
-       wifi_networkCount = -1; // -1 represents that scan is running/active
-       wifi_selectedIndex = 0;
-       wifi_showInfo = false;
+       wifi_networkCount = WiFi.scanNetworks();
 
       runLoop(scanningwifi);
        
@@ -82,6 +79,24 @@ static const unsigned char image_wifi_50_bits[] U8X8_PROGMEM = {0x80,0x0f,0x00,0
        break;
       case 4:
       runLoop(loading);
+        break;
+      case 5:
+        deauthMode = true;
+        {
+          // Show scanning screen
+          u8g2.clearBuffer();
+          u8g2.setFont(u8g2_font_t0_13_tr);
+          u8g2.drawStr(32, 15, "scanning");
+          u8g2.drawStr(44, 32, "wifi ");
+          u8g2.drawStr(33, 49, "networks");
+          u8g2.sendBuffer();
+          WiFi.mode(WIFI_STA);
+          WiFi.disconnect();
+          delay(100);
+          wifi_networkCount = WiFi.scanNetworks();
+          runLoop(scanningwifi);
+        }
+        deauthMode = false;
         break;
     }
     lastInputTime = millis(); 

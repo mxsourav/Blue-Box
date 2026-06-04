@@ -7,6 +7,9 @@ const uint8_t TOTAL_CHANNELS = 126;
 const uint8_t SAMPLES = 4;
 
 // Data arrays
+void scanAll();
+void drawnrfGraph();
+
 uint8_t strength1[TOTAL_CHANNELS] = {0};
 uint8_t strength2[TOTAL_CHANNELS] = {0};
 uint16_t hits1[TOTAL_CHANNELS] = {0};

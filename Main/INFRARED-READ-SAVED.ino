@@ -51,6 +51,14 @@ void recvIR() {
 
     u8g2.sendBuffer();
 
+  static unsigned long lastDebugTime = 0;
+  if (millis() - lastDebugTime > 1000) {
+    lastDebugTime = millis();
+    int rawVal = (digitalRead)(3);
+    Serial.print("[IR Debug] Pin 3 (RX) state: ");
+    Serial.println(rawVal == HIGH ? "HIGH (Idle)" : "LOW (Active/Signal)");
+  }
+
 
   if (digitalRead(BTN_BACK) == LOW) {
         delay(200);
@@ -88,6 +96,10 @@ static const unsigned char image_download_bits[] U8X8_PROGMEM = {0x00,0x00,0x00,
    uint32_t hex = IrReceiver.decodedIRData.decodedRawData;
 uint16_t addr = IrReceiver.decodedIRData.address;
 uint16_t cmd = IrReceiver.decodedIRData.command;
+Serial.println("[IR] Signal caught!");
+Serial.print("[IR] Protocol: ");
+Serial.println(IrReceiver.getProtocolString());
+Serial.printf("[IR] Address: 0x%04X, Command: 0x%04X\n", addr, cmd);
 uint8_t bits = IrReceiver.decodedIRData.numberOfBits;
 uint8_t rawlen = IrReceiver.decodedIRData.rawlen;
 const char* type = IrReceiver.getProtocolString();

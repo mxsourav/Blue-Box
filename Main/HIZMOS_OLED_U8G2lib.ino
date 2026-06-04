@@ -47,11 +47,13 @@
 */
 #include "ELECHOUSE_CC1101_SRC_DRV.h"
 #include "animations.h"
+#include "WORLD_IR_CODES.h"
 #include "mainmenu.h"
 #include "dolphinreactions.h"
 #include <stdint.h>
 #include <Arduino.h>
 #include <U8g2lib.h>
+#include "logo_hat.h"
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
@@ -72,10 +74,41 @@
 
 #include <esp_wifi.h>
 #include "esp_heap_caps.h"
-#include "esp_spi_flash.h"
+#include "spi_flash_mmap.h"
 #include "esp_chip_info.h"
 #include "esp_system.h"
+#include "version.h"
 
+// Forward declarations to prevent compiler scope errors
+void loading();
+void scanningwifi();
+void deautherAttackLoop();
+void runTVBGone();
+void resetTVBGone();
+uint16_t cyclesPerPulse(uint8_t timer_val);
+String wifi_encryptionType(wifi_auth_mode_t encryption);
+void checksysdevices();
+void datausage();
+void updateTimer();
+void drawnosdcard();
+void drawHistogram();
+void SPECTRUMANALYZER();
+void JAMMINGCC1101();
+void drawBruteForce();
+void drawSettingsMenu();
+void handleinfraredmenu();
+void handlesubghzmenu();
+void handlegpiomenu();
+void handlenrftoolsmenu();
+void handlewifimenu();
+void handleblemenu();
+void handleappsmenu();
+void handlesettingsmenu();
+void handlenfcmenu();
+void handlebadusbmenu();
+void filesetup();
+void filemenu();
+void handlesuniversalremotemenu();
 
 USBHIDKeyboard Keyboard;
 
@@ -108,6 +141,40 @@ BLEScan* blescanner_pBLEScan;
 int wifi_selectedIndex = 0;
 int wifi_networkCount = 0;
 bool wifi_showInfo = false;
+
+// ===== WiFi Deauther State =====
+bool deauthMode = false;
+bool deauthActive = false;
+unsigned long deauthFrameCount = 0;
+unsigned long deauthFrameCounterThisSecond = 0;
+unsigned long deauthFps = 0;
+unsigned long lastDeauthSendTime = 0;
+unsigned long lastFpsUpdateTime = 0;
+String deauthTargetSSID = "";
+String deauthTargetMACStr = "";
+uint8_t deauthTargetMAC[6] = {0};
+uint8_t deauthTargetChannel = 1;
+
+/*
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(
+  
+ U8G2_R0,
+  U8X8_PIN_NONE // Reset pin not in action
+ );
+*/
+
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, U8X8_PIN_NONE);
+
+// ===== Display Invert =====
+bool invertUI = false;
+
+void forceDisplayNormal() {
+  u8g2.sendF("c", 0xa6);
+}
+
+void applyDisplayInvert() {
+  u8g2.sendF("c", invertUI ? 0xa7 : 0xa6);
+}
 
 
 
@@ -187,20 +254,6 @@ void setColor(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 
-/*
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(
-  
- U8G2_R0,
-  U8X8_PIN_NONE // Reset pin not in action
- );
-
-
-
-*/
-
-
-U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, U8X8_PIN_NONE);
-
 
 
 
@@ -216,41 +269,42 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R2, U8X8_PIN_NONE);
 
 #define SD_DETECT_PIN 0
 
-// nRF24 via FSPI
+// ===== NRF24L01 SPI (FSPI) - ACTIVE MODULE =====
 #define NRF_SCK   18
-#define NRF_MISO  16
-#define NRF_MOSI  17
+#define NRF_MISO  12
+#define NRF_MOSI  13
 
-// cc1101 shares SPI with nRF24 (FSPI)
+// ===== CC1101 shares SPI with NRF24 (FSPI) - NO MODULE PRESENT =====
 #define cc1101_SCK   18
-#define cc1101_MISO  16
-#define cc1101_MOSI  17
+#define cc1101_MISO  12
+#define cc1101_MOSI  13
 
 
-//////////////cc1101(1)//////////
-#define CC1101_CS    45
-#define CC1101_GDO0  21
-#define CC1101_GDO2  47
-/////////////cc1101(2)//////////
-#define CC1101_2_CS    40
-#define CC1101_2_GDO0  41
-#define CC1101_2_GDO2  42
+//////////////cc1101(1)////////// (Dummy)
+#define CC1101_CS    99
+#define CC1101_GDO0  99
+#define CC1101_GDO2  99
+// ===== CC1101 #2 - NOT PRESENT (dummy pins) =====
+#define CC1101_2_CS    99
+#define CC1101_2_GDO0  99
+#define CC1101_2_GDO2  99
 
 
 
 
 // SD Card via HSPI
 #define SD_SCK    14
-#define SD_MISO   39
-#define SD_MOSI   38
-#define SD_CS     46  // Moved from 37 (PSRAM pin)
+#define SD_MISO   16
+#define SD_MOSI   17
+#define SD_CS     46
 
-// RF24 Modules (moved from GPIO 10/11 to avoid conflict with BTN_BACK/BTN_SELECT)
-#define CE1_PIN   1
-#define CSN1_PIN  2
+// ===== NRF24 radio1 - ACTIVE MODULE =====
+#define CE1_PIN   21
+#define CSN1_PIN  47
 
-#define CE2_PIN   12
-#define CSN2_PIN  13
+// ===== NRF24 radio2 - NOT PRESENT (dummy pins) =====
+#define CE2_PIN   99
+#define CSN2_PIN   99
 
 // RF24 objects using fspi
 SPIClass RADIO_SPI(FSPI);
@@ -686,6 +740,10 @@ static bool lastRawState[48];
 static unsigned long lastStateChangeTime[48];
 static bool buttonInitDone = false;
 
+// Edge detection: tracks whether a button press has already been consumed
+static bool selectConsumed = false;  // true = press already reported, waiting for release
+static bool backConsumed = false;
+
 void initButtons() {
   if (buttonInitDone) return;
   uint8_t pins[] = {BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT, BTN_SELECT, BTN_BACK};
@@ -696,6 +754,8 @@ void initButtons() {
     lastRawState[pin] = HIGH;
     lastStateChangeTime[pin] = 0;
   }
+  selectConsumed = false;
+  backConsumed = false;
   buttonInitDone = true;
 }
 
@@ -745,17 +805,39 @@ int custom_digitalRead(uint8_t pin) {
 
   if (pin == BTN_BACK) {
     if (gotoMainMenuFlag) {
-      static unsigned long lastLowTime = 0;
-      if (millis() - lastLowTime > 10) {
-        lastLowTime = millis();
-        return LOW;
-      }
+      return LOW;
+    }
+    if (debouncedState[BTN_BACK] == HIGH) {
+      backConsumed = false;
       return HIGH;
     }
-    return debouncedState[BTN_BACK];
+    if (!backConsumed) {
+      backConsumed = true;
+      return LOW;
+    }
+    return HIGH;
   }
 
-  if (pin == BTN_UP || pin == BTN_DOWN || pin == BTN_LEFT || pin == BTN_RIGHT || pin == BTN_SELECT) {
+  // --- EDGE DETECTION for SELECT (OK) button ---
+  // Only return LOW once per press. Must release and re-press for next input.
+  if (pin == BTN_SELECT) {
+    if (debouncedState[BTN_SELECT] == HIGH) {
+      // Button is released — reset consumed flag
+      selectConsumed = false;
+      return HIGH;
+    }
+    // Button is LOW (pressed)
+    if (!selectConsumed) {
+      // First time detecting this press — report LOW and consume it
+      selectConsumed = true;
+      return LOW;
+    }
+    // Already consumed this press — return HIGH until released
+    return HIGH;
+  }
+
+  // UP/DOWN/LEFT/RIGHT: level-based (allows hold-to-scroll)
+  if (pin == BTN_UP || pin == BTN_DOWN || pin == BTN_LEFT || pin == BTN_RIGHT) {
     return debouncedState[pin];
   }
 
@@ -881,20 +963,18 @@ static const unsigned char image_SDcardMounted_bits[] U8X8_PROGMEM = {0xff,0x07,
   u8g2.sendBuffer();
 }
 
-
-
-
-
 void runButtonDiagnostic() {
   Serial.println("=== ENTERING BUTTON DIAGNOSTIC ON BOOT (10s) ===");
   initButtons();
   unsigned long startTime = millis();
   while (millis() - startTime < 10000) { // 10 seconds live test
     u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.setFont(u8g2_font_5x7_tr);
     
-    u8g2.drawStr(10, 10, "BUTTON DIAGNOSTIC");
-    u8g2.drawStr(5, 22, "Press buttons on board:");
+    // Title & Version
+    u8g2.drawStr(2, 7, "DIAGNOSTICS");
+    u8g2.drawStr(70, 7, HIZMOS_VERSION);
+    u8g2.drawHLine(0, 9, 128);
     
     // Read raw physical state of each pin directly from hardware
     int p4  = (digitalRead)(4);
@@ -905,19 +985,50 @@ void runButtonDiagnostic() {
     int p11 = (digitalRead)(11);
     
     char buf[64];
-    sprintf(buf, "G4:%-10s G7:%-10s", p4 == LOW ? "LOW (Press)" : "HIGH", p7 == LOW ? "LOW (Press)" : "HIGH");
-    u8g2.drawStr(5, 34, buf);
+    u8g2.drawStr(2, 18, "BUTTONS:");
+    sprintf(buf, "UP:G4(%s) DOWN:G11(%s) SEL:G5(%s)", p4 == LOW ? "L" : "H", p11 == LOW ? "L" : "H", p5 == LOW ? "L" : "H");
+    u8g2.drawStr(2, 27, buf);
+    sprintf(buf, "LF:G6(%s) RT:G10(%s) BAK:G7(%s)", p6 == LOW ? "L" : "H", p10 == LOW ? "L" : "H", p7 == LOW ? "L" : "H");
+    u8g2.drawStr(2, 36, buf);
     
-    sprintf(buf, "G5:%-10s G10:%-10s", p5 == LOW ? "LOW (Press)" : "HIGH", p10 == LOW ? "LOW (Press)" : "HIGH");
-    u8g2.drawStr(5, 46, buf);
-    
-    sprintf(buf, "G6:%-10s G11:%-10s", p6 == LOW ? "LOW (Press)" : "HIGH", p11 == LOW ? "LOW (Press)" : "HIGH");
-    u8g2.drawStr(5, 58, buf);
+    u8g2.drawHLine(0, 39, 128);
+    u8g2.drawStr(2, 47, "LED FLASH CODES:");
+    u8g2.drawStr(2, 55, "GRN:Ok RED:Loop MAG:Crash");
+    u8g2.drawStr(2, 63, "YEL:Stk CYA:Brn BLU:Reset");
     
     u8g2.sendBuffer();
     delay(30);
   }
   Serial.println("=== BUTTON DIAGNOSTIC FINISHED ===");
+}
+
+void playGlitchAnimation(const uint8_t* baseImage, unsigned long durationMs) {
+  unsigned long startTime = millis();
+  while (millis() - startTime < durationMs) {
+    u8g2.clearBuffer();
+    u8g2.drawXBMP(0, 0, 128, 64, baseImage);
+    
+    // Scanline noise
+    for (int i = 0; i < random(0, 4); i++) {
+      u8g2.drawHLine(0, random(0, 64), 128);
+    }
+    
+    // Block glitch (20% chance)
+    if (random(0, 100) < 20) {
+      u8g2.drawBox(random(0, 100), random(0, 58), random(20, 60), random(2, 7));
+    }
+    
+    // XOR invert strip (18% chance)
+    if (random(0, 100) < 18) {
+      u8g2.setDrawColor(2);
+      u8g2.drawBox(0, random(0, 56), 128, random(2, 9));
+      u8g2.setDrawColor(1);
+    }
+
+    
+    u8g2.sendBuffer();
+    delay(random(20, 60));
+  }
 }
 
 void setup() {
@@ -986,6 +1097,7 @@ void setup() {
   pinMode(CE2_PIN, OUTPUT);
 
   Serial.println("Initializing IR...");
+  pinMode(irrecivepin, INPUT_PULLUP); // Enable internal pull-up for naked TSOP receiver
   IrReceiver.begin(irrecivepin);
   IrSender.begin(irsenderpin);
 
@@ -1005,8 +1117,8 @@ void setup() {
   Serial.println("Initializing OLED Display...");
   u8g2.begin();
 
-  // Run real-time button diagnostic utility
-  runButtonDiagnostic();
+  // Run real-time button diagnostic utility (disabled)
+  // runButtonDiagnostic();
 
   Serial.println("Initializing NeoPixel LED (Disabled)...");
   // pixel.begin();                                         // INITIALIZE NEOPIXEL LED  
@@ -1019,12 +1131,10 @@ void setup() {
 
   Serial.println("Drawing start splash screen...");
   drawstartinfo();
-  delay(1000);
+  delay(1500);
   
-  u8g2.clearBuffer();
-  displayImage(config2);
-  u8g2.sendBuffer();
-  delay(1000);
+  playGlitchAnimation(logo_hat_bits, 2000);
+  delay(500);
   
   Serial.println("Checking system devices (NRF & SD)...");
   checksysdevices();
@@ -1064,6 +1174,9 @@ void loop() {
   
   if (autoMode) {
     gotoMainMenuFlag = false; // Reset the escape flag in screensaver
+    forceDisplayNormal();
+  } else {
+    applyDisplayInvert();
   }
 
   static unsigned long lastRenderTime = 0;
@@ -1077,7 +1190,7 @@ void loop() {
       bool forceRedraw = (autoMode != prevAutoMode);
       prevAutoMode = autoMode;
       
-      if (millis() - lastImageChangeTime > 300 || forceRedraw) {
+      if (millis() - lastImageChangeTime > 200 || forceRedraw) {
         if (!forceRedraw) {
           autoImageIndex = (autoImageIndex + 1) % totalAutoImages;
         }

@@ -35,6 +35,7 @@ void handleinfraredmenu() {
        
         break;
       case 1:
+        IrReceiver.resume();
         runLoop(recvIR);
        break;
       case 2:

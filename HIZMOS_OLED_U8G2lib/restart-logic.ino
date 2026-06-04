@@ -1,3 +1,6 @@
+void restartDevice();
+void drawCancelledMessage();
+
 void restartesp() {
   
   if (digitalRead(BTN_SELECT) == LOW) {

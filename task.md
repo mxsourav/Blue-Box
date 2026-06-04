@@ -15,3 +15,19 @@
   - [x] Compile firmware
   - [x] Flash firmware to COM9
   - [x] Verify WiFi scanning, LED color codes, and screen wake button behaviors
+
+# Checklist - TV-B-Gone Integration
+
+- [x] Write tvbgone.ino
+  - [x] Write to active sketch folder
+  - [x] Write to Main backup folder
+- [x] Copy and configure WORLD_IR_CODES.h
+  - [x] Copy 123.8 KB file from F: drive to active folder
+  - [x] Copy to Main backup folder
+- [x] Integrate into Universal Remote menu
+  - [x] Update `universal-remotes.ino` case 0 to call `runTVBGone()` and `resetTVBGone()`
+  - [x] Update backup `universal-remotes.ino`
+- [ ] Compile and Flash
+  - [ ] Compile firmware
+  - [ ] Flash firmware to COM9
+  - [ ] Verify TV-B-Gone region selection, transmission, and completion screens

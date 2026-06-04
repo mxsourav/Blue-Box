@@ -64,7 +64,7 @@ u8g2.drawStr(67, 32, freqStr);
 u8g2.sendBuffer();
 
 
-  while (!isPressed(BTN_BACK)) {
+  while (!isButtonPressed(BTN_BACK)) {
     radio1.setChannel(channel);
     radio1.stopListening();
     radio1.write(d1, sizeof(d1));
@@ -127,17 +127,17 @@ void drawjammspeschannelMenu() {
 void jammspecchannel() {
   drawjammspeschannelMenu();
 
-  if (isPressed(BTN_UP)) {
+  if (isButtonPressed(BTN_UP)) {
     nrfspesSelectedMenu = (nrfspesSelectedMenu - 1 + menuCount) % menuCount;
     delay(200);
   }
 
-  if (isPressed(BTN_DOWN)) {
+  if (isButtonPressed(BTN_DOWN)) {
     nrfspesSelectedMenu = (nrfspesSelectedMenu + 1) % menuCount;
     delay(200);
   }
 
-  if (isPressed(BTN_LEFT)) {
+  if (isButtonPressed(BTN_LEFT)) {
     if (nrfspesSelectedMenu == 0) nrfspesChannel = max(nrfspesChannel - 1, 0);
     if (nrfspesSelectedMenu == 1) nrfspesPaLevelIndex = max(nrfspesPaLevelIndex - 1, 0);
     if (nrfspesSelectedMenu == 2) nrfspesDataRateIndex = max(nrfspesDataRateIndex - 1, 0);
@@ -145,7 +145,7 @@ void jammspecchannel() {
     delay(150);
   }
 
-  if (isPressed(BTN_RIGHT)) {
+  if (isButtonPressed(BTN_RIGHT)) {
     if (nrfspesSelectedMenu == 0) nrfspesChannel = min(nrfspesChannel + 1, 125);
     if (nrfspesSelectedMenu == 1) nrfspesPaLevelIndex = min(nrfspesPaLevelIndex + 1, 3);
     if (nrfspesSelectedMenu == 2) nrfspesDataRateIndex = min(nrfspesDataRateIndex + 1, 2);
@@ -153,7 +153,7 @@ void jammspecchannel() {
     delay(150);
   }
 
-  if (isPressed(BTN_SELECT) && nrfspesSelectedMenu == 3) {
+  if (isButtonPressed(BTN_SELECT) && nrfspesSelectedMenu == 3) {
     drawjammspeschannelMenu();
     jamChannelNow(nrfspesChannel);
  

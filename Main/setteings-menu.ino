@@ -33,7 +33,7 @@ void handlesettingsmenu() {
        runLoop(datausage);
         break;
       case 1:
-      if (!SD.begin(SD_CS)) {
+      if (!SD.begin(SD_CS, SD_SPI)) {
             
            runLoop(drawnosdcard);
             }
@@ -50,7 +50,7 @@ void handlesettingsmenu() {
        break;
       case 4:
 
-      if (!SD.begin(SD_CS)) {
+      if (!SD.begin(SD_CS, SD_SPI)) {
    
     runLoop(drawnosdcard);
   }

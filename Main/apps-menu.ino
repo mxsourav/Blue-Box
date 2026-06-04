@@ -50,7 +50,7 @@ void handleappsmenu() {
 
        break;
       case 4:
-      if (!SD.begin(SD_CS)) {
+      if (!SD.begin(SD_CS, SD_SPI)) {
     u8g2.clearBuffer();  
     u8g2.drawStr(0, 20, "SD init failed!");
     u8g2.sendBuffer();

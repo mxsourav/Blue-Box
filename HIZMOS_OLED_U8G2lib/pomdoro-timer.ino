@@ -1,4 +1,8 @@
 
+bool buttonPressed(int pin);
+void updateTimer();
+void drawUI();
+
 int focusDuration = 25;
 int breakDuration = 5;
 bool onBreak = false;
