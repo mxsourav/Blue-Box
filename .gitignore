@@ -4,3 +4,7 @@ build/
 *.merged.bin
 .system_generated/
 *.log
+.pio/
+Main/.pio/
+*.ino.cpp
+Main/src/*.ino.cpp

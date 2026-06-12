@@ -1,0 +1,471 @@
+================================================================================
+       HIZMOS BLUE-BOX ESP32-S3 FIRMWARE — FULL SECURITY & BUG AUDIT
+================================================================================
+Date:     2026-06-13
+Auditors: 4 independent automated audit agents
+Scope:    ALL 52 source files in Main/src/
+================================================================================
+
+EXECUTIVE SUMMARY
+─────────────────
+Total unique vulnerabilities found: 88 (deduplicated across 4 auditors)
+
+  🔴 CRITICAL:  12
+  🟠 HIGH:      26
+  🟡 MEDIUM:    28
+  🟢 LOW:       22
+
+================================================================================
+                         🔴 CRITICAL VULNERABILITIES (12)
+================================================================================
+
+CVE-BB-001: UNSIGNED FIRMWARE FLASHING FROM SD CARD
+────────────────────────────────────────────────────
+File:     flasher-tool-function.ino, lines 108-155
+Code:
+  void flashBinary(String path) {
+    File updateBin = SD.open("/" + path);
+    size_t updateSize = updateBin.size();
+    Update.begin(updateSize);
+    size_t written = Update.writeStream(updateBin);
+    if (written == updateSize && Update.end(true)) {
+      ESP.restart();
+    }
+  }
+Impact:   ANY .bin file on SD card replaces device firmware. No signature,
+          no checksum, no authentication. Brief physical access = persistent
+          compromise. Update.end(true) forces acceptance.
+Fix:      Add SHA-256 hash verification or Ed25519 signature check before
+          calling Update.begin().
+
+CVE-BB-002: ESP-IDF FRAME SANITY CHECK BYPASS
+──────────────────────────────────────────────
+File:     deauth_override.c, lines 3-5
+Code:
+  int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32_t arg3) {
+      return 1;
+  }
+Impact:   Overrides ALL ESP-IDF raw 802.11 frame validation. Any crafted
+          frame (malformed, oversized, illegal) can be transmitted. Could
+          crash the WiFi stack itself via self-injected malformed frames.
+Fix:      Implement minimal validation (frame length checks, type checks)
+          instead of blanket bypass.
+
+CVE-BB-003: HID SCRIPT INFINITE RECURSION VIA REPEAT COMMAND
+─────────────────────────────────────────────────────────────
+File:     hid-script.ino, lines 159-169
+Code:
+  } else if (upperLine.startsWith("REPEAT ")) {
+    int repeatCount = upperLine.substring(7).toInt();
+    for (int i = 0; i < repeatCount; i++) {
+      hidRunScript(path);  // RECURSIVE CALL!
+    }
+  }
+Impact:   A .duck script with "REPEAT 999" causes unbounded recursion.
+          Each call re-parses the file and hits REPEAT again = infinite
+          recursion = GUARANTEED stack overflow crash.
+Fix:      Replace recursion with iterative replay. Track last command and
+          repeat it N times without re-calling hidRunScript().
+
+CVE-BB-004: HARDCODED ADMIN BACKDOOR IN BAD-USB PAYLOAD
+────────────────────────────────────────────────────────
+File:     bad-usb-menu.ino, lines 199-208
+Code:
+  case 8: // Create Admin User
+    Keyboard.print("net user hacker 1234 /add");
+    Keyboard.print("net localgroup administrators hacker /add");
+Impact:   Hardcoded username "hacker" with password "1234" creates a
+          persistent backdoor admin account. Known credentials visible in
+          source code.
+Fix:      Remove hardcoded credentials. Prompt for custom username/password
+          via the on-device keyboard.
+
+CVE-BB-005: SELF-DEAUTH WITH NO TARGET VALIDATION
+──────────────────────────────────────────────────
+File:     wifi_deauther.ino, lines 27-63
+Code:
+  WiFi.mode(WIFI_AP_STA);
+  memcpy(&frame[10], deauthTargetMAC, 6);
+  for (int i = 0; i < 5; i++) {
+    esp_wifi_80211_tx(WIFI_IF_AP, frame, 26, false);
+  }
+Impact:   No check if target is the device's own AP. Selecting own AP =
+          infinite self-deauth loop. parseMacAddress() silently zeros MAC
+          on failure = deauth to 00:00:00:00:00:00. Broadcast destination
+          deauths ALL clients, not just one.
+Fix:      Check target MAC against own MAC. Validate parseMacAddress()
+          output. Add timeout.
+
+CVE-BB-006: STACK-ALLOCATED VLA FROM UNBOUNDED SD CARD DATA
+────────────────────────────────────────────────────────────
+File:     INFRARED-READ-SAVED.ino, line 393
+Code:
+  char buf[data.length() + 1];  // VLA sized from SD file content!
+  data.toCharArray(buf, sizeof(buf));
+Impact:   If an .ir file contains a very long line (e.g. 10KB), this
+          allocates 10KB on the stack = instant stack overflow crash.
+Fix:      Use heap allocation: char* buf = (char*)malloc(data.length()+1);
+          Or limit data.length() before allocation.
+
+CVE-BB-007: FILE LISTING BUFFER OVERFLOWS (4 INSTANCES)
+───────────────────────────────────────────────────────
+Files:
+  - files-menu.ino    line 130: filoFileList[50] — no bounds check
+  - hid-script.ino    line 319: hidFileList[20]  — no bounds check
+  - INFRARED-READ-SAVED.ino line 557: irFileList[20] — no bounds check
+  - flasher-tool-function.ino line 72: files[50]     — has bounds check (OK)
+Impact:   If SD card has >50 files (or >20 .duck/.ir files), writing past
+          array boundary = memory corruption = crash or code execution.
+Fix:      Add bounds check: if (count >= ARRAY_SIZE) break;
+
+CVE-BB-008: inputreName() TIGHT SPIN LOOP — WDT RESET
+──────────────────────────────────────────────────────
+File:     files-menu.ino, lines 45-118
+Code:
+  while (true) {
+    // draws keyboard, checks digitalRead — NO yield/delay when idle
+  }
+Impact:   When no button is pressed, this spins the CPU at 100% without
+          ever yielding to FreeRTOS. Task WDT reset after ~5 seconds.
+Fix:      Add delay(10) at end of loop body.
+
+CVE-BB-009: filoRoot FILE HANDLE NEVER CLOSED
+──────────────────────────────────────────────
+File:     files-menu.ino, line 343
+Code:     filoRoot = SD.open("/");  // NEVER closed
+Impact:   File handle leak. On ESP32, SD library uses limited file
+          descriptors. Repeated menu entries will exhaust them.
+Fix:      Close filoRoot when exiting file menu.
+
+CVE-BB-010: PACKET COUNTER RACE CONDITION IN ISR
+─────────────────────────────────────────────────
+File:     packet-analyzer.ino, lines 23, 45, 211, 225
+Code:
+  // In ISR (IRAM_ATTR):
+  sniffer.packetCounter++;
+  // In main loop (not synchronized):
+  uint16_t pktCount = sniffer.packetCounter;  // line 211
+  // ... several lines later ...
+  sniffer.packetCounter = 0;                   // line 225
+Impact:   16-bit read is not atomic on ESP32. Counter can be read+cleared
+          non-atomically = lost packet counts. Also uint16_t overflows
+          at 65535 with no wrap handling.
+Fix:      Use portENTER_CRITICAL/portEXIT_CRITICAL around read-and-clear.
+
+CVE-BB-011: jamChannelNow() INFINITE BLOCKING LOOP
+───────────────────────────────────────────────────
+File:     jammer-spec-channel.ino, line 67
+Code:     while (!isButtonPressed(BTN_BACK)) { /* RF TX with delayMicroseconds(100) */ }
+Impact:   delayMicroseconds does NOT yield to FreeRTOS. This tight loop
+          will trigger WDT reset. No timeout.
+Fix:      Use delay(1) periodically or add a timeout counter.
+
+CVE-BB-012: restart-logic.ino — while(1) PERMANENT HANG
+────────────────────────────────────────────────────────
+File:     restart-logic.ino, line 15
+Code:     while (1);
+Impact:   After pressing BTN_BACK in restart menu, device hangs forever
+          until power cycle. WDT will eventually reset it.
+Fix:      return; instead of while(1);
+
+
+================================================================================
+                         🟠 HIGH VULNERABILITIES (26)
+================================================================================
+
+HIGH-001: BLE MOUSE — NO AUTHENTICATION/ENCRYPTION
+File:     ble-mouse.ino, lines 10-46
+Impact:   BLE HID service "hizmos" has no pairing, no PIN, no encryption.
+          Any nearby device can connect and inject mouse movements.
+
+HIGH-002: BLE SCANNER — ACTIVE SCAN EXPOSES DEVICE MAC
+File:     ble-scanner.ino, line 151
+Impact:   Active scanning broadcasts device MAC via SCAN_REQ packets.
+          Enables tracking. Scan window (99) nearly equals interval (100).
+
+HIGH-003: SUBGHZ BRUTE FORCE — NO SAFEGUARDS
+File:     subghz.ino, lines 1037-1288
+Impact:   Brute forces 8/12/16-bit codes at max TX power (12 dBm).
+          No frequency region validation. No rate limiting. No timeout.
+
+HIGH-004: SUBGHZ JAMMER — UNRESTRICTED MULTI-BAND RF
+File:     subghz.ino, lines 793-1030
+Impact:   Multi-freq mode transmits on 433/434/868/915 MHz simultaneously.
+          Sweep mode covers 433-435 MHz continuously. Illegal in most
+          jurisdictions. Only safeguard: 30-second auto-stop.
+
+HIGH-005: NRF JAMMER — SELF-JAMMING, NO TIMEOUT
+File:     nrf-jammer.ino, lines 79-151
+Impact:   "All channels" mode jams device's own WiFi/BLE. Both radios at
+          RF24_PA_MAX. No warning, no timeout on main jammer.
+
+HIGH-006: PROMISCUOUS CALLBACK — NO PACKET VALIDATION
+File:     packet-analyzer.ino, lines 41-49
+Impact:   ISR-context callback never validates buf contents. Counter
+          overflow at 65535. uint8_t scaled = pktCount * 2 overflows.
+
+HIGH-007: DISABLE WINDOWS DEFENDER — NO CONFIRMATION
+File:     bad-usb-menu.ino, lines 209-215
+Impact:   One button press disables real-time AV. Combined with admin
+          backdoor (CVE-BB-004) = full compromise chain.
+
+HIGH-008: MULTIPLE sprintf INTO UNDERSIZED BUFFERS
+Files:
+  - subghz.ino:      char hdr[30]
+  - nrf-scanner.ino:  char label[32] — can produce ~40 chars
+  - i2c-scanner.ino:  char buf[32]
+  - ir_jammer.ino:    char buf[32]
+  - ble-scanner.ino:  char buffer[10]
+Impact:   Format string output exceeds fixed buffer sizes = stack smash.
+Fix:      Use snprintf() with explicit size limits.
+
+HIGH-009: NO DEEP SLEEP IMPLEMENTATION
+Impact:   No calls to esp_deep_sleep_start() anywhere. Device runs at
+          full power continuously. No battery protection.
+
+HIGH-010: SCREENSAVER RUNS AT 33 FPS CONTINUOUSLY
+File:     HIZMOS_OLED_U8G2lib.ino, lines 1188-1204
+Impact:   Even in idle/screensaver mode, OLED updates at 33 FPS with
+          full animation frames. Continuous CPU and display power drain.
+
+HIGH-011: NO OTA ENCRYPTION OR SECURE BOOT
+Impact:   ESP32-S3 supports secure boot and flash encryption, but no
+          references to esp_secure_boot or esp_flash_encryption anywhere.
+
+HIGH-012: CC1101 GDO0 PIN CONTENTION
+File:     subghz.ino, lines 926-932, 948, 970, 1203-1229
+Impact:   GDO0 is a CC1101 OUTPUT pin. Driving it as OUTPUT from ESP32
+          creates contention where both chips drive the same line.
+          Also: CC1101 pins are defined as pin 99 (invalid GPIO).
+
+HIGH-013: NRF CE2/CSN2 SET TO PIN 99
+File:     HIZMOS_OLED_U8G2lib.ino, lines 1100-1102
+Impact:   Pin 99 doesn't exist on ESP32-S3. pinMode/digitalWrite on
+          invalid pins = undefined behavior.
+
+HIGH-014: DEAUTH FRAME INJECTION — NO RATE LIMITING
+File:     wifi_deauther.ino, lines 57-63
+Impact:   5 frames per loop iteration with only 2ms delay. Runs until
+          user presses BACK. No auto-stop, no max frame count.
+
+HIGH-015: RF JAMMER — NO AUTOMATIC SHUTOFF
+Files:    subghz.ino, nrf-jammer.ino
+Impact:   Main jammers run indefinitely. Only Lab Mode has 30-sec limit.
+
+HIGH-016: HEAP EXHAUSTION FROM SD FILE READING
+File:     INFRARED-READ-SAVED.ino, lines 478-483
+Code:     vector<String> lines; while(f.available()) { lines.push_back(...); }
+Impact:   Crafted .ir file with millions of lines exhausts heap = crash.
+          Same in files-menu.ino drawFileViewer().
+
+HIGH-017: HID SCRIPT — NO SIZE/LINE LIMIT
+File:     hid-script.ino, lines 119-225
+Impact:   Processes SD file indefinitely. Huge .duck file locks device.
+
+HIGH-018: SD_DETECT_PIN = GPIO 0 (BOOT PIN)
+File:     HIZMOS_OLED_U8G2lib.ino, line 270
+Impact:   GPIO 0 is ESP32 boot strapping pin. INPUT_PULLUP could
+          interfere with boot mode if SD socket pulls LOW during boot.
+
+HIGH-019: hidInit() ROOT HANDLE NEVER CLOSED
+File:     hid-script.ino, line 305
+Impact:   File root = SD.open("/") — never closed after iteration.
+
+HIGH-020: readSDfiles() ROOT HANDLE NEVER CLOSED
+File:     flasher-tool-function.ino, line 67
+Impact:   File root = SD.open("/") — never closed after iteration.
+
+HIGH-021: updateBin NOT CLOSED ON Update.begin() FAILURE
+File:     flasher-tool-function.ino, lines 132-137
+Impact:   If Update.begin fails, function returns without closing file.
+
+HIGH-022: BLE SCAN CALLBACK — UNBOUNDED VECTOR
+File:     ble-scanner.ino, line 48
+Impact:   blescanner_devices vector grows without limit. Dense BLE
+          environment (500+ devices) = OOM crash. Dedup only happens
+          AFTER scan completes.
+
+HIGH-023: esp_wifi_* RETURN VALUES ALL IGNORED
+File:     packet-analyzer.ino, lines 83-97
+Impact:   esp_wifi_init, start, set_channel, set_promiscuous all return
+          esp_err_t but never checked. Silent failures.
+
+HIGH-024: BATTERY PERCENT HARDCODED
+File:     HIZMOS_OLED_U8G2lib.ino, line 352
+Code:     int batteryPercent = 87;  // hardcoded!
+Impact:   No ADC battery monitoring. Cannot detect low battery or
+          enable power saving.
+
+HIGH-025: animations.h IS 2.5 MB — EXCESSIVE FLASH USAGE
+File:     animations.h — 2,569,590 bytes
+Impact:   ~50% of typical 4MB ESP32-S3 flash partition. Leaves minimal
+          space for OTA updates.
+
+HIGH-026: formaterDeleteAllFromSD() — RECURSIVE STACK OVERFLOW
+File:     sd-formater.ino, lines 43-57
+Impact:   Recursive directory traversal. Deep nesting on SD card will
+          overflow ESP32 default 8KB task stack.
+
+
+================================================================================
+                         🟡 MEDIUM VULNERABILITIES (28)
+================================================================================
+
+MED-001:  Path traversal via inputName() keyboard includes "/" and "."
+          File: INFRARED-READ-SAVED.ino, lines 244-251
+
+MED-002:  WiFi deauther creates open AP via WIFI_AP_STA mode
+          File: wifi_deauther.ino, line 40
+
+MED-003:  IR replay — no validation of raw signal values from SD
+          File: INFRARED-READ-SAVED.ino, lines 388-402
+
+MED-004:  irLastIRRaw 1024-byte buffer — no bounds enforcement
+          File: INFRARED-READ-SAVED.ino, lines 5-6
+
+MED-005:  SubGHz no region-based frequency restriction (300-928 MHz)
+          File: subghz.ino, lines 731-765
+
+MED-006:  NRF scanner at MAX power with no packet filtering
+          File: nrf-tools.ino, lines 73-91
+
+MED-007:  HID script parser — no command whitelist/sandboxing
+          File: hid-script.ino, lines 101-235
+
+MED-008:  BLE manufacturer data misinterpreted via c_str() on binary
+          File: ble-scanner.ino, lines 28-33
+
+MED-009:  BLE never deinit after scanner — radio stays powered
+          File: ble-scanner.ino, ble-menu.ino
+
+MED-010:  NeoPixel LED diagnostic runs for 10 seconds every boot
+          File: HIZMOS_OLED_U8G2lib.ino, lines 1164-1178
+
+MED-011:  IR sender pin directly driven without current limiting
+          File: ir_jammer.ino, lines 108-112
+
+MED-012:  No persistent storage (no EEPROM/NVS) — all settings lost
+          Impact: No crash recovery, no settings persistence.
+
+MED-013:  SD card writes without checksums or integrity verification
+          File: INFRARED-READ-SAVED.ino, lines 183-186
+
+MED-014:  sprintf with %x into int instead of unsigned int
+          File: wifi_deauther.ino, line 16
+
+MED-015:  Division by zero in calculator evalExpression()
+          File: calculater.ino, line 125
+
+MED-016:  Division by zero in i2cscanner() when no devices found
+          File: i2c-scanner.ino, lines 15, 19
+
+MED-017:  i2cFoundAddresses[32] — no bounds check on device count
+          File: i2c-scanner.ino, line 67
+
+MED-018:  sub-ghz-menu.ino — missing case 7 "SAVED SIGNALS" handler
+          File: sub-ghz-menu.ino — case 7 does nothing when selected
+
+MED-019:  CC1101 SPI bus sharing without mutex between two modules
+          File: subghz.ino — no SPI mutex between CC1101_1 and CC1101_2
+
+MED-020:  filoViewingFile potential leak on re-open without close
+          File: files-menu.ino, line 266
+
+MED-021:  SD.rename() return value ignored
+          File: files-menu.ino, line 276
+
+MED-022:  SD.remove() return value ignored
+          File: files-menu.ino line 295, sd-formater.ino lines 50-52
+
+MED-023:  radio1/radio2 begin() not checked for failure
+          File: nrf-tools.ino, lines 73-91
+
+MED-024:  radio1/radio2 write() return values ignored everywhere
+          Files: nrf-jammer.ino, jammer-spec-channel.ino
+
+MED-025:  esp_wifi_80211_tx return value ignored
+          File: wifi_deauther.ino
+
+MED-026:  Update.writeStream() partial write not handled
+          File: flasher-tool-function.ino, lines 139-140
+
+MED-027:  tvbgone.ino VLA uint16_t rawData[numpairs*2] on stack
+          File: tvbgone.ino, line 103
+
+MED-028:  files-menu.ino delete confirmation — blocking while(true) loop
+          File: files-menu.ino, lines 292-303 (has delay, won't WDT)
+
+
+================================================================================
+                         🟢 LOW VULNERABILITIES (22)
+================================================================================
+
+LOW-001:  WiFi AP not explicitly torn down after deauth
+LOW-002:  IR jammer no thermal throttling, density up to 10
+LOW-003:  Serial debug output leaks RF frequencies/RSSI
+LOW-004:  WiFi SSID displayed without sanitization
+LOW-005:  VLA in tvbgone with corrupted PROGMEM header
+LOW-006:  MAC address parsing: %x values >255 silently truncated
+LOW-007:  SD card write error handling missing (println return unchecked)
+LOW-008:  universal-remotes.ino unreachable case 4
+LOW-009:  infrared-menu.ino unreachable cases 3 and 4
+LOW-010:  gpio-menu.ino cases 2/3/4 empty handlers
+LOW-011:  sd-formater progress bar cosmetic (runs before actual format)
+LOW-012:  bad-usb-menu showRunningScreen float→uint8_t cast
+LOW-013:  formaterLastSelectState inverted logic (works by accident)
+LOW-014:  sd-info.ino lastSelect same inverted logic pattern
+LOW-015:  check-sys-devices.ino reinitializes radios during diagnostic
+LOW-016:  packet-analyzer scaled count overflow (uint8_t = pktCount * 2)
+LOW-017:  snake-game placeFood() infinite loop if snake fills grid
+LOW-018:  I2C endTransmission error codes 1-4 silently ignored
+LOW-019:  WiFi scan results wifi_networkCount could be stale on re-entry
+LOW-020:  pulseISR shared variables missing volatile qualifier
+LOW-021:  nrf stopJamming flag should be volatile
+LOW-022:  deauth_override.c exists — intentional security bypass
+
+
+================================================================================
+                         PRIORITY FIX ORDER
+================================================================================
+
+PHASE 1 — CRASH PREVENTION (fix first, prevents bricked devices)
+──────────────────────────────────────────────────────────────────
+1. CVE-BB-003  hidRunScript REPEAT recursion → iterative replay
+2. CVE-BB-006  VLA from SD data → heap malloc or size limit
+3. CVE-BB-007  File listing array overflows → bounds checks (4 files)
+4. CVE-BB-008  inputreName() tight loop → add delay(10)
+5. CVE-BB-011  jamChannelNow() tight loop → add delay(1)
+6. CVE-BB-012  restart-logic while(1) → return
+7. HIGH-008   sprintf → snprintf (6 files)
+8. HIGH-016   Unbounded SD reading → max line count
+9. HIGH-022   BLE vector → max size limit
+10. HIGH-026  Recursive SD delete → iterative approach
+
+PHASE 2 — SECURITY HARDENING
+──────────────────────────────
+11. CVE-BB-001 Firmware flashing → add signature verification
+12. CVE-BB-002 Frame sanity bypass → minimal validation
+13. CVE-BB-004 Hardcoded credentials → user input
+14. CVE-BB-005 Self-deauth → MAC validation + timeout
+15. HIGH-001  BLE mouse → add pairing/PIN
+16. HIGH-011  Enable secure boot + flash encryption
+
+PHASE 3 — RESOURCE & POWER
+────────────────────────────
+17. CVE-BB-009 filoRoot file handle → close on exit
+18. CVE-BB-010 Packet counter race → critical sections
+19. HIGH-009  Deep sleep implementation
+20. HIGH-024  Battery ADC monitoring
+21. HIGH-019/020/021 File handle leaks → close all handles
+
+PHASE 4 — QUALITY & COMPLIANCE
+────────────────────────────────
+22. All MEDIUM error handling issues
+23. All LOW logic bugs
+24. Region-based frequency locking
+25. Rate limiting on deauth/jammer
+
+
+================================================================================
+                         END OF REPORT
+================================================================================

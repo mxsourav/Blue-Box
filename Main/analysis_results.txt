@@ -1,0 +1,271 @@
+# 🔥 WiFi / Bluetooth Burnout — Root Cause Analysis
+
+## Executive Summary
+
+The firmware has **4 critical software bugs** that cause crashes, watchdog resets, memory panics, and brownout resets during WiFi and Bluetooth operations.
+
+| # | Bug | Symptom | Severity |
+|---|-----|---------|----------|
+| 1 | `runLoop()` tight CPU spin | **Yellow LED** (Task WDT reset) | 🔴 Critical |
+| 2 | `selectPressed()` blocking busy-wait | **Yellow LED** (WDT on button hold) | 🔴 Critical |
+| 3 | BLE `init()` called every scan + callback leak | **Magenta LED** (heap panic) | 🔴 Critical |
+| 4 | WiFi/BLE radios never turned off on menu exit | **Cyan LED** (brownout from dual-radio power draw) | 🟠 High |
+
+---
+
+## Bug 1: `runLoop()` Tight CPU Spin → Watchdog Reset
+
+### Location
+[HIZMOS_OLED_U8G2lib.ino:856-879](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/HIZMOS_OLED_U8G2lib.ino#L856-L879)
+
+### Problem
+The main loop runner spins in a `while(true)` without ever yielding to FreeRTOS. During the 30ms gap between frames, the CPU runs at 100% checking `millis()` and `digitalRead()` in a tight loop. This starves the FreeRTOS idle task and WiFi/BLE background tasks, triggering the **Task Watchdog Timer** after ~5 seconds.
+
+```cpp
+// CURRENT (BUGGY)
+void runLoop(void (*func)()) {
+  unsigned long lastRun = millis();
+  while (true) {
+    if (gotoMainMenuFlag) break;
+    if (millis() - lastRun >= 30) {
+      func();
+      lastRun = millis();
+    }
+    if (gotoMainMenuFlag) break;
+    if (digitalRead(BTN_BACK) == LOW) break;
+    // ⚠️ NO YIELD — CPU pegged at 100%
+  }
+}
+```
+
+### Fix
+Add `delay(1)` at the end of the loop body. On ESP32, `delay()` calls `vTaskDelay()` internally, which yields to the FreeRTOS scheduler.
+
+```diff
+     if (digitalRead(BTN_BACK) == LOW) {
+       Serial.println("[BUTTON] BACK pressed (exit loop)!");
+       break;
+     }
++
++    // Yield to FreeRTOS scheduler to prevent Task WDT resets
++    delay(1);
+   }
+ }
+```
+
+---
+
+## Bug 2: `selectPressed()` Blocking Busy-Wait → Watchdog Reset
+
+### Location
+[HIZMOS_OLED_U8G2lib.ino:847-854](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/HIZMOS_OLED_U8G2lib.ino#L847-L854)
+
+### Problem
+If a user holds the SELECT button, this blocks the entire CPU indefinitely:
+
+```cpp
+// CURRENT (BUGGY)
+bool selectPressed() {
+  if (digitalRead(BTN_SELECT) == LOW) {
+    Serial.println("[BUTTON] SELECT pressed!");
+    while (digitalRead(BTN_SELECT) == LOW);  // ⚠️ BLOCKS FOREVER
+    return true;
+  }
+  return false;
+}
+```
+
+### Fix
+Add `delay(10)` inside the busy-wait:
+
+```diff
+  bool selectPressed() {
+    if (digitalRead(BTN_SELECT) == LOW) {
+      Serial.println("[BUTTON] SELECT pressed!");
+-    while (digitalRead(BTN_SELECT) == LOW);
++    while (digitalRead(BTN_SELECT) == LOW) {
++      delay(10);  // Yield while waiting for button release
++    }
+      return true;
+    }
+    return false;
+  }
+```
+
+> [!WARNING]
+> There are more blocking `while(digitalRead(...) == LOW);` patterns in [INFRARED-READ-SAVED.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/INFRARED-READ-SAVED.ino) (lines 65, 172, 180, 443, 525, 533, 600). These should all get `delay(10)` inside them too.
+
+---
+
+## Bug 3: BLE Memory Leak — Repeated `init()` + Heap Callback Leak
+
+### Location
+[ble-scanner.ino:134-165](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/ble-scanner.ino#L134-L165)
+
+### Problem
+Every time a BLE scan is triggered (pressing BACK in the scanner), two things go wrong:
+
+1. **`BLEDevice::init("")` is called again** — this re-registers BLE drivers without deinit, leaking internal heap allocations each time.
+2. **`new blescanner_AdvertisedDeviceCallbacks()`** allocates a new callback object on the heap every scan, and the pointer is never freed.
+
+After 5-10 scans, the heap is exhausted → **ESP_RST_PANIC** (Magenta LED on boot).
+
+```cpp
+// CURRENT (BUGGY)
+void blescanner_scan() {
+  ...
+  BLEDevice::init("");                    // ⚠️ Called EVERY scan
+  blescanner_pBLEScan = BLEDevice::getScan();
+  blescanner_pBLEScan->setAdvertisedDeviceCallbacks(
+    new blescanner_AdvertisedDeviceCallbacks(), false  // ⚠️ LEAKED every scan
+  );
+  ...
+}
+```
+
+### Fix
+Use static flags/instances to ensure init happens once and the callback is reused:
+
+```diff
+  void blescanner_scan() {
+    blescanner_devices.clear();
+    ...
+-  BLEDevice::init("");
++  static bool bleInitialized = false;
++  if (!bleInitialized) {
++    BLEDevice::init("");
++    bleInitialized = true;
++  }
++
+    blescanner_pBLEScan = BLEDevice::getScan();
+-  blescanner_pBLEScan->setAdvertisedDeviceCallbacks(new blescanner_AdvertisedDeviceCallbacks(), false);
++  static blescanner_AdvertisedDeviceCallbacks* pCallbacks = new blescanner_AdvertisedDeviceCallbacks();
++  blescanner_pBLEScan->setAdvertisedDeviceCallbacks(pCallbacks, false);
+    blescanner_pBLEScan->setActiveScan(true);
+    ...
+  }
+```
+
+---
+
+## Bug 4: WiFi/BLE Radios Left Active on Menu Exit → Brownout
+
+### Location
+- [mainmenu.ino:525-565](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/mainmenu.ino#L525-L565) (menu action handler)
+- [wifi-menu.ino:62-73](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/wifi-menu.ino#L62-L73) (WiFi scan / sniffer)
+- [ble-menu.ino:61-69](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/ble-menu.ino#L61-L69) (BLE scanner / mouse)
+
+### Problem
+When the user presses BACK to exit a WiFi or BLE feature:
+- **WiFi stays in `WIFI_STA` or `WIFI_AP_STA` mode**, continuously scanning or keeping the radio active.
+- **BLE stays initialized**, keeping the Bluetooth radio powered on.
+- **The packet sniffer** leaves promiscuous mode on with the callback registered, intercepting all WiFi frames in the background.
+
+Running both radios simultaneously draws **300-450mA peak current**. On USB power or a weak LiPo, this triggers a hardware brownout → **ESP_RST_BROWNOUT** (Cyan LED on boot).
+
+### Fix — Turn off WiFi when exiting WiFi menu
+In [mainmenu.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/mainmenu.ino):
+
+```diff
+     case 4:
+         runLoop(handlewifimenu);
++        // Turn off WiFi on exit to save power
++        WiFi.mode(WIFI_OFF);
+       break;
+     case 5:
+       runLoop(handleblemenu);
++      // Deinit BLE on exit to reclaim memory and radio
++      BLEDevice::deinit(true);
+       break;
+```
+
+### Fix — Clean up packet sniffer on exit
+In [wifi-menu.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/wifi-menu.ino):
+
+```diff
+        case 1:
+         setupSnifferGraph();
+         runLoop(updateSnifferGraph);
++       // Disable promiscuous mode and turn off WiFi
++       esp_wifi_set_promiscuous(false);
++       WiFi.mode(WIFI_OFF);
+         break;
+```
+
+### Fix — Turn off WiFi after scan list exit
+Also in [wifi-menu.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/wifi-menu.ino):
+
+```diff
+        case 0:
+         ...
+         runLoop(scanningwifi);
++       WiFi.mode(WIFI_OFF);
+         break;
+```
+
+### Fix — Turn off WiFi after deauther exit
+```diff
+        case 5:
+          ...
+          runLoop(scanningwifi);
++        WiFi.mode(WIFI_OFF);
+          deauthMode = false;
+          break;
+```
+
+---
+
+## Additional Issue: `while(1);` Crash in SD Flasher
+
+### Location
+[apps-menu.ino:113](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/apps-menu.ino#L113)
+
+### Problem
+```cpp
+if (!SD.begin(SD_CS, SD_SPI)) {
+    u8g2.drawStr(0, 20, "SD init failed!");
+    u8g2.sendBuffer();
+    while (1);  // ⚠️ PERMANENT FREEZE → WDT reset
+}
+```
+
+This will trigger a watchdog reset every time the SD card isn't inserted when entering the flasher tool.
+
+### Fix
+```diff
+-    while (1);
++    delay(2000);
++    return;  // Go back to menu instead of freezing
+```
+
+---
+
+## Diagnostic LED Colour Reference
+The firmware already has reset‑reason diagnostics in [HIZMOS_OLED_U8G2lib.ino:1041-1078](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/HIZMOS_OLED_U8G2lib.ino#L1041-L1078). Use the boot LED colour to identify which bug is hitting you:
+
+| LED Colour | Reset Reason | Most Likely Cause |
+|-----------|-------------|-------------------|
+| 🟢 Green | `ESP_RST_POWERON` | Normal boot |
+| 🟡 Yellow | `ESP_RST_TASK_WDT` / `ESP_RST_INT_WDT` | Bug 1 or Bug 2 (tight loops) |
+| 🟣 Magenta | `ESP_RST_PANIC` | Bug 3 (BLE heap exhaustion) |
+| 🔵 Cyan | `ESP_RST_BROWNOUT` | Bug 4 (dual radio power draw) |
+| 🔴 Red (flashing) | Boot loop (3+ resets) | Any of the above repeating |
+| 🔵 Blue | `ESP_RST_SW` | Software reset (normal) |
+
+---
+
+## Summary of All Files to Edit
+
+| File | Line(s) | Change |
+|------|---------|--------|
+| [HIZMOS_OLED_U8G2lib.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/HIZMOS_OLED_U8G2lib.ino) | 850 | Add `delay(10)` in `selectPressed()` busy‑wait |
+| [HIZMOS_OLED_U8G2lib.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/HIZMOS_OLED_U8G2lib.ino) | 877 | Add `delay(1)` in `runLoop()` |
+| [ble-scanner.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/ble-scanner.ino) | 142-144 | Guard `BLEDevice::init()` + reuse callback |
+| [mainmenu.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/mainmenu.ino) | 540-544 | Add `WiFi.mode(WIFI_OFF)` and `BLEDevice::deinit(true)` |
+| [wifi-menu.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/wifi-menu.ino) | 68, 72-73, 97 | Add WiFi cleanup after scan/sniffer/deauther |
+| [apps-menu.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/apps-menu.ino) | 113 | Replace `while(1)` with `delay(2000); return;` |
+| [INFRARED-READ-SAVED.ino](file:///D:/Gaar%20Fata%20Project/Blue-Box-main/Blue-Box-main/Main/src/INFRARED-READ-SAVED.ino) | 65,172,180,443,525,533,600 | Add `delay(10)` in all button busy‑waits |
+
+---
+
+The above content shows the entire, complete analysis of the firmware issues and proposed fixes.
