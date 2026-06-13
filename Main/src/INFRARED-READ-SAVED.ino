@@ -107,8 +107,8 @@ const char* type = IrReceiver.getProtocolString();
 // تحويل الأرقام إلى نصوص
 char addrStr[10];
 char cmdStr[10];
-sprintf(addrStr, "%04X", addr);  // HEX
-sprintf(cmdStr, "%04X", cmd);    // HEX
+snprintf(addrStr, sizeof(addrStr), "%04X", addr);  // HEX
+snprintf(cmdStr, sizeof(cmdStr), "%04X", cmd);    // HEX
 
 u8g2.clearBuffer();
 u8g2.setFontMode(1);
@@ -483,7 +483,7 @@ void fileOptions(String filename) {
         }
 
         std::vector<String> lines;
-        while (f.available()) {
+        while (f.available() && lines.size() < 100) {
           String line = f.readStringUntil('\n');
           line.trim();
           lines.push_back(line);

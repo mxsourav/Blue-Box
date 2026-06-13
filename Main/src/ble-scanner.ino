@@ -105,32 +105,32 @@ void blescanner_drawDeviceDetails(const blescanner_Device& dev) {
   u8g2.setFont(u8g2_font_5x7_tr);
 
   
-  String name = dev.name;
-  if (name.length() > 21) {
-    u8g2.drawStr(0, 19, name.substring(0, 21).c_str());
-    u8g2.drawStr(0, 27, name.substring(21).c_str());
+  char detBuf[32];
+  if (dev.name.length() > 21) {
+    u8g2.drawStr(0, 19, dev.name.substring(0, 21).c_str());
+    u8g2.drawStr(0, 27, dev.name.substring(21).c_str());
   } else {
-    String nameStr = "Name: " + name;
-    u8g2.drawStr(0, 19, nameStr.c_str());
+    snprintf(detBuf, sizeof(detBuf), "Name: %s", dev.name.c_str());
+    u8g2.drawStr(0, 19, detBuf);
   }
 
   
-  String macLine1 = "MAC: " + dev.address.substring(0, 12);
-  String macLine2 = "     " + dev.address.substring(12);
-  u8g2.drawStr(0, 35, macLine1.c_str());
-  u8g2.drawStr(0, 43, macLine2.c_str());
+  snprintf(detBuf, sizeof(detBuf), "MAC: %s", dev.address.substring(0, 12).c_str());
+  u8g2.drawStr(0, 35, detBuf);
+  snprintf(detBuf, sizeof(detBuf), "     %s", dev.address.substring(12).c_str());
+  u8g2.drawStr(0, 43, detBuf);
 
   char rssiStr[25];
   snprintf(rssiStr, sizeof(rssiStr), "RSSI: %d dBm", dev.rssi);
   u8g2.drawStr(0, 51, rssiStr);
 
  
-  String deviceType = dev.deviceType;
-  if (deviceType.length() > 21) {
-    deviceType = deviceType.substring(0, 18) + "...";
+  if (dev.deviceType.length() > 18) {
+    snprintf(detBuf, sizeof(detBuf), "Type: %.18s...", dev.deviceType.c_str());
+  } else {
+    snprintf(detBuf, sizeof(detBuf), "Type: %s", dev.deviceType.c_str());
   }
-  String typeStr = "Type: " + deviceType;
-  u8g2.drawStr(0, 59, typeStr.c_str());
+  u8g2.drawStr(0, 59, detBuf);
 
   u8g2.sendBuffer();
 }

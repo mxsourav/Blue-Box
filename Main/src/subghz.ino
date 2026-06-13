@@ -1276,7 +1276,7 @@ void drawBruteForce() {
       Serial.println("╚════════════════════════════════════════╝");
       Serial.printf("  Stopped at:   0x%04X / 0x%04X\n", currentCode, maxCode);
       Serial.printf("  Time Elapsed: %lum %lus\n", totalTime / 60, totalTime % 60);
-      Serial.printf(" Codes Tested:  %lu (%.1f%%)\n", (unsigned long)currentCode, ((float)currentCode / (float)maxCode) * 100.0);
+      Serial.printf(" Codes Tested:  %lu (%.1f%%)\n", (unsigned long)currentCode, maxCode > 0 ? ((float)currentCode / (float)maxCode) * 100.0 : 0.0);
       Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
       
       safeDelay(200);

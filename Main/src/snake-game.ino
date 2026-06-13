@@ -33,7 +33,7 @@ void drawGameOverScreen() {
   u8g2.drawStr(20, 20, "GAME OVER");
   u8g2.setFont(u8g2_font_6x10_tr);
   char buf[20];
-  sprintf(buf, "Score: %d", score);
+  snprintf(buf, sizeof(buf), "Score: %d", score);
   u8g2.drawStr(35, 35, buf);
   u8g2.drawStr(5, 55, "SELECT: Retry   BACK: Exit");
   u8g2.sendBuffer();
@@ -141,7 +141,7 @@ void snakeLoop() {
 
   u8g2.setFont(u8g2_font_5x8_tr);
   char scoreStr[10];
-  sprintf(scoreStr, "Score: %d", score);
+  snprintf(scoreStr, sizeof(scoreStr), "Score: %d", score);
   u8g2.drawStr(2, 8, scoreStr);
 
  
