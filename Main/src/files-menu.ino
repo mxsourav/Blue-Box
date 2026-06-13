@@ -275,6 +275,7 @@ void filemenu() {
           newName += ".txt";
           if (SD.exists("/" + newName)) SD.remove("/" + newName);
           SD.rename("/" + selectedFile, "/" + newName);
+          if (!filoRoot) { filoRoot = SD.open("/"); }
           filoRoot.rewindDirectory();
           listFiles(filoRoot);
           filoSelectedIndex = 0;
@@ -294,6 +295,7 @@ void filemenu() {
           delay(400);
           if (digitalRead(BTN_SELECT) == LOW) {
             SD.remove("/" + selectedFile);
+            if (!filoRoot) { filoRoot = SD.open("/"); }
             filoRoot.rewindDirectory();
             listFiles(filoRoot);
             filoSelectedIndex = 0;

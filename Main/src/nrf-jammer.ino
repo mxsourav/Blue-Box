@@ -136,13 +136,11 @@ void jamChannels(const char* label, int startCh, int endCh) {
 
 
 
-      radio2.setChannel(ch);
-
-      radio2.stopListening();
-
-      radio2.write(data2, sizeof(data2));
-
-      delayMicroseconds(100);
+      // radio2 not connected — skipped
+      // radio2.setChannel(ch);
+      // radio2.stopListening();
+      // radio2.write(data2, sizeof(data2));
+      // delayMicroseconds(100);
 
       delay(1); // Yield to FreeRTOS to prevent WDT reset
 

@@ -84,9 +84,13 @@ void deautherAttackLoop() {
   u8g2.drawStr(4, 10, "DEAUTHER ACTIVE");
   
   u8g2.setFont(u8g2_font_5x8_tr);
-  u8g2.drawStr(4, 22, ("SSID: " + deauthTargetSSID).c_str());
-  u8g2.drawStr(4, 32, ("BSSID:" + deauthTargetMACStr).c_str());
-  u8g2.drawStr(4, 42, ("Chan: " + String(deauthTargetChannel)).c_str());
+  char buf[64];
+  snprintf(buf, sizeof(buf), "SSID: %s", deauthTargetSSID.c_str());
+  u8g2.drawStr(4, 22, buf);
+  snprintf(buf, sizeof(buf), "BSSID:%s", deauthTargetMACStr.c_str());
+  u8g2.drawStr(4, 32, buf);
+  snprintf(buf, sizeof(buf), "Chan: %d", deauthTargetChannel);
+  u8g2.drawStr(4, 42, buf);
   
   // Dynamic dots animation for "ATTACKING"
   static int animState = 0;
@@ -95,13 +99,12 @@ void deautherAttackLoop() {
     animState = (animState + 1) % 4;
     lastAnimTime = now;
   }
-  String animStr = "ATTACKING";
-  for (int i = 0; i < animState; i++) {
-    animStr += ".";
-  }
-  u8g2.drawStr(4, 52, animStr.c_str());
+  char animBuf[16];
+  snprintf(animBuf, sizeof(animBuf), "ATTACKING%.*s", animState, "...");
+  u8g2.drawStr(4, 52, animBuf);
   
-  u8g2.drawStr(4, 62, ("OK:" + String(deauthFrameCount) + " FAIL:" + String(deauthFailedCount) + " (" + String(deauthFps) + "/s)").c_str());
+  snprintf(buf, sizeof(buf), "OK:%lu FAIL:%lu (%lu/s)", deauthFrameCount, deauthFailedCount, deauthFps);
+  u8g2.drawStr(4, 62, buf);
   u8g2.sendBuffer();
 }
 

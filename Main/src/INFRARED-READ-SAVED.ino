@@ -153,6 +153,7 @@ u8g2.sendBuffer();
 
 
     irRawData = "";
+    irRawData.reserve(rawlen * 8);
     for (uint8_t i = 1; i < rawlen; i++) {
       irRawData += String(IrReceiver.irparams.rawbuf[i] * MICROS_PER_TICK);
       if (i < rawlen - 1) irRawData += ",";
@@ -236,6 +237,7 @@ static const unsigned char image_FILLED_bits[] U8X8_PROGMEM = {0xff,0xff,0xff,0x
         delay(2000);
         return;
       }
+      delay(10);
     }
   }
 }
@@ -347,6 +349,7 @@ String inputName() {
     if (digitalRead(BTN_BACK) == LOW) {
       return ""; // Cancel input
     }
+    delay(10);
   }
 }
 
@@ -394,7 +397,7 @@ void replayRaw(String data) {
   const int maxBufLen = 2048;
   int dataLen = data.length();
   if (dataLen > maxBufLen - 1) dataLen = maxBufLen - 1;
-  char buf[maxBufLen];
+  static char buf[maxBufLen];
   data.substring(0, dataLen).toCharArray(buf, maxBufLen);
   char *token = strtok(buf, ",");
   while (token != NULL && index < maxLen) {
@@ -529,6 +532,7 @@ void fileOptions(String filename) {
             delay(200); while (digitalRead(BTN_BACK) == LOW) { delay(10); }
             break;
           }
+          delay(10);
         }
       }
     }
@@ -537,6 +541,7 @@ void fileOptions(String filename) {
       delay(200); while (digitalRead(BTN_BACK) == LOW) { delay(10); }
       break;
     }
+    delay(10);
   }
 
   listIRFiles();  // عرض الملفات بعد الخروج
@@ -621,6 +626,7 @@ void listIRFiles() {
       if (selectedIndex > viewOffset + visibleItems - 1) viewOffset++;
       delay(150);
     }
+    delay(10);
   }
 }
 

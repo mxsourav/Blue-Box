@@ -2,11 +2,13 @@
   // Get RAM info
   size_t freeHeap = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
   size_t totalHeap = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
+  if (totalHeap == 0) totalHeap = 1;
   int ramUsage = 100 - ((freeHeap * 100) / totalHeap);
 
   // Get Flash info
   uint32_t flashSize = ESP.getFlashChipSize();
   uint32_t flashUsed = ESP.getSketchSize();
+  if (flashSize == 0) flashSize = 1;
   int flashUsage = (flashUsed * 100) / flashSize;
 
   // Temperature (approx)

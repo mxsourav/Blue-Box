@@ -200,7 +200,7 @@ void handleIRJammer() {
       case 3:
         u8g2.drawStr(8, y, "DENSITY:");
         char densStr[5];
-        sprintf(densStr, "%d", jammerDensity);
+        snprintf(densStr, sizeof(densStr), "%d", jammerDensity);
         u8g2.drawStr(70, y, densStr);
         u8g2.drawFrame(90, y - 8, 30, 7);
         u8g2.drawBox(90, y - 8, jammerDensity * 3, 7);

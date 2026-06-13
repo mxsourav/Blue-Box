@@ -79,13 +79,15 @@ void blescanner_drawMenu() {
       }
       
     
-      String displayText = blescanner_devices[idx].name;
-      if (displayText.length() > 14) {
-        displayText = displayText.substring(0, 14) + "..";
+      char dispBuf[32];
+      const String& devName = blescanner_devices[idx].name;
+      if (devName.length() > 14) {
+        snprintf(dispBuf, sizeof(dispBuf), "%.14s.. (%d)", devName.c_str(), blescanner_devices[idx].rssi);
+      } else {
+        snprintf(dispBuf, sizeof(dispBuf), "%s (%d)", devName.c_str(), blescanner_devices[idx].rssi);
       }
-      displayText += " (" + String(blescanner_devices[idx].rssi) + ")";
       
-      u8g2.drawStr(2, y, displayText.c_str());
+      u8g2.drawStr(2, y, dispBuf);
       
       if (i == 0) {
         u8g2.setDrawColor(1);
@@ -186,7 +188,7 @@ void blescanner() {
       lastPress = millis();
     } else if (blescanner_isPressed(BTN_SELECT) && !blescanner_devices.empty()) {
       blescanner_drawDeviceDetails(blescanner_devices[blescanner_selectedIndex]);
-      delay(4000);
+      delay(1500);
       blescanner_drawMenu();
       lastPress = millis();
     } else if (blescanner_isPressed(BTN_BACK)) {

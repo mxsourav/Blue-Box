@@ -83,19 +83,24 @@ void scanningwifi() {
 
     // Box 1: SSID
     u8g2.drawFrame(0, 0, 128, 13);
-    u8g2.drawStr(4, 9, ("SSID: " + WiFi.SSID(wifi_selectedIndex)).c_str());
+    char buf[64];
+    snprintf(buf, sizeof(buf), "SSID: %s", WiFi.SSID(wifi_selectedIndex).c_str());
+    u8g2.drawStr(4, 9, buf);
 
     // Box 2: RSSI
     u8g2.drawFrame(0, 14, 128, 13);
-    u8g2.drawStr(4, 23, ("RSSI: " + String(WiFi.RSSI(wifi_selectedIndex)) + " dBm").c_str());
+    snprintf(buf, sizeof(buf), "RSSI: %d dBm", WiFi.RSSI(wifi_selectedIndex));
+    u8g2.drawStr(4, 23, buf);
 
     // Box 3: MAC
     u8g2.drawFrame(0, 28, 128, 13);
-    u8g2.drawStr(4, 37, ("MAC: " + WiFi.BSSIDstr(wifi_selectedIndex)).c_str());
+    snprintf(buf, sizeof(buf), "MAC: %s", WiFi.BSSIDstr(wifi_selectedIndex).c_str());
+    u8g2.drawStr(4, 37, buf);
 
     // Box 4: Encryption
     u8g2.drawFrame(0, 42, 128, 13);
-    u8g2.drawStr(4, 51, ("Enc: " + wifi_encryptionType(WiFi.encryptionType(wifi_selectedIndex))).c_str());
+    snprintf(buf, sizeof(buf), "Enc: %s", wifi_encryptionType(WiFi.encryptionType(wifi_selectedIndex)).c_str());
+    u8g2.drawStr(4, 51, buf);
 
     // Box 5: Back hint / Deauth option
     u8g2.drawFrame(0, 56, 128, 8);

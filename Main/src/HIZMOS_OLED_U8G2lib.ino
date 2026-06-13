@@ -944,9 +944,9 @@ void runButtonDiagnostic() {
     
     char buf[64];
     u8g2.drawStr(2, 18, "BUTTONS:");
-    sprintf(buf, "UP:G4(%s) DOWN:G11(%s) SEL:G5(%s)", p4 == LOW ? "L" : "H", p11 == LOW ? "L" : "H", p5 == LOW ? "L" : "H");
+    snprintf(buf, sizeof(buf), "UP:G4(%s) DOWN:G11(%s) SEL:G5(%s)", p4 == LOW ? "L" : "H", p11 == LOW ? "L" : "H", p5 == LOW ? "L" : "H");
     u8g2.drawStr(2, 27, buf);
-    sprintf(buf, "LF:G6(%s) RT:G10(%s) BAK:G7(%s)", p6 == LOW ? "L" : "H", p10 == LOW ? "L" : "H", p7 == LOW ? "L" : "H");
+    snprintf(buf, sizeof(buf), "LF:G6(%s) RT:G10(%s) BAK:G7(%s)", p6 == LOW ? "L" : "H", p10 == LOW ? "L" : "H", p7 == LOW ? "L" : "H");
     u8g2.drawStr(2, 36, buf);
     
     u8g2.drawHLine(0, 39, 128);

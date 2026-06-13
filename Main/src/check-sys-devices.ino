@@ -26,7 +26,7 @@ void checksysdevices() {
 
   String radio1_state = "error";
 
-  String radio2_state = "error";
+  String radio2_state = "N/C"; // radio2 not connected (dummy pins)
 
   String sd_state     = "error";
 
@@ -46,17 +46,9 @@ void checksysdevices() {
 
 
 
-  // ----- Init radio2 -----
-
-  if (radio2.begin(&RADIO_SPI)) {
-
-    radio2_state = "work";
-
-   
-
-    
-
-  }
+  // ----- Init radio2 ----- (skipped: radio2 not physically connected)
+  // radio2.begin() would crash — CE2/CSN2 are dummy pins
+  // radio2_state stays "N/C"
 
 
 

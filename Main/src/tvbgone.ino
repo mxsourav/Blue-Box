@@ -103,7 +103,7 @@ void runTVBGone() {
       // Cap numpairs to prevent stack overflow from corrupted data
       #define TVB_MAX_PAIRS 128
       if (numpairs > TVB_MAX_PAIRS) numpairs = TVB_MAX_PAIRS;
-      uint16_t rawData[TVB_MAX_PAIRS * 2];
+      static uint16_t rawData[TVB_MAX_PAIRS * 2];
       for (uint8_t k = 0; k < numpairs; k++) {
         uint8_t ti = tvb_read_bits(powerCode, bitcompression);
         rawData[k * 2] = powerCode->times[ti * 2];

@@ -345,6 +345,7 @@ void hidscriptmenu() {
     u8g2.setFont(u8g2_font_6x10_tr);
     u8g2.drawStr(10, 30, "No .duck files found");
     u8g2.sendBuffer();
+    for(int i=0; i<20; i++) hidFileList[i] = "";
     return;
   }
 
@@ -374,6 +375,7 @@ void hidscriptmenu() {
 
   }
 
+  for(int i=0; i<20; i++) hidFileList[i] = "";
 }
 
 
