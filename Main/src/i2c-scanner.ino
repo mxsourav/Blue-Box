@@ -11,13 +11,6 @@ void setupi2c(){
 
 
 void i2cscanner() {
-  if (i2cDeviceCount == 0) {
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_6x12_tr);
-    u8g2.drawStr(10, 30, "No I2C devices found");
-    u8g2.sendBuffer();
-    return;
-  }
   if (digitalRead(BTN_UP) == LOW) {
     i2cSelectedIndex = (i2cSelectedIndex == 0) ? i2cDeviceCount - 1 : i2cSelectedIndex - 1;
     delay(200);
@@ -48,8 +41,8 @@ void i2cDrawMenu() {
 
     u8g2.drawFrame(0, y, 128, 13);
 
-    char line[40];
-    snprintf(line, sizeof(line), "0x%02X  %s", i2cFoundAddresses[actualIndex], identifyDevice(i2cFoundAddresses[actualIndex]));
+    char line[32];
+    sprintf(line, "0x%02X  %s", i2cFoundAddresses[actualIndex], identifyDevice(i2cFoundAddresses[actualIndex]));
 
     if (actualIndex == i2cSelectedIndex) {
       u8g2.drawRBox(3, y + 2, 122, 9, 3);
@@ -71,9 +64,7 @@ void i2cScan() {
   for (uint8_t address = 1; address < 127; address++) {
     Wire.beginTransmission(address);
     if (Wire.endTransmission() == 0) {
-      if (i2cDeviceCount < 32) {
-        i2cFoundAddresses[i2cDeviceCount++] = address;
-      }
+      i2cFoundAddresses[i2cDeviceCount++] = address;
       delay(5);
     }
   }

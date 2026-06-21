@@ -163,7 +163,7 @@ u8g2.sendBuffer();
     while (true) {
       if (digitalRead(BTN_BACK) == LOW) return;
 
-      if (digitalRead(BTN_SELECT) == LOW) {
+      if (selectPressed()) {
         delay(200);
 
 
@@ -329,7 +329,7 @@ String inputName() {
       delay(150);
     }
 
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       int keyIndex = (cursorY + offsetY) * cols + cursorX;
       if (keyIndex < totalKeys) {
         const char* key = keys[keyIndex];
@@ -439,7 +439,7 @@ void fileOptions(String filename) {
     }
 
     // تنفيذ الاختيار
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       delay(200); while (digitalRead(BTN_SELECT) == LOW);
       String selected = opts[optIndex];
 
@@ -596,7 +596,7 @@ void listIRFiles() {
 
     u8g2.sendBuffer();
 
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       delay(200); while(digitalRead(BTN_SELECT)==LOW);
       fileOptions(irFileList[selectedIndex]);
       break;

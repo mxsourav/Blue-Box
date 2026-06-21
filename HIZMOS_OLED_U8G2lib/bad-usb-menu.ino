@@ -105,7 +105,7 @@ void handlebadusbmenu() {
     lastInputTime = millis(); 
   }
 
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
     switch (selectedItem) {
 
       case 0: //demo

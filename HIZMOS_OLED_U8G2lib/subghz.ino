@@ -863,7 +863,7 @@ void JAMMINGCC1101() {
       sweepDir = 1;
       
       // Initialize CC1101 properly
-      ELECHOUSE_cc1101.Init();
+      // ELECHOUSE_cc1101.Init();
       ELECHOUSE_cc1101.setMHZ(currentFreq);
       ELECHOUSE_cc1101.setModulation(2); // ASK/OOK
       ELECHOUSE_cc1101.setDRate(10); // Data rate

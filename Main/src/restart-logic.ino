@@ -12,8 +12,7 @@ void restartesp() {
   if (digitalRead(BTN_BACK) == LOW) {
     delay(200);
     drawCancelledMessage();
-    delay(1000);
-    return; // Return to menu instead of freezing
+    while (1); 
   }
 }
 

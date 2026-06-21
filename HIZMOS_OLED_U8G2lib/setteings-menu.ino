@@ -23,13 +23,13 @@ void handlesettingsmenu() {
     lastInputTime = millis(); 
   }
 
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
     switch (selectedItem) {
       case 0:
        runLoop(datausage);
         break;
       case 1:
-      if (!SD.begin(SD_CS, SD_SPI)) {
+      if (!false) {
            runLoop(drawnosdcard);
             }
             drawBoxMessage("Do you want to", "format SD card?", "Press SELECT to continue");
@@ -42,7 +42,7 @@ void handlesettingsmenu() {
       case 3: 
        break;
       case 4:
-      if (!SD.begin(SD_CS, SD_SPI)) {
+      if (!false) {
         runLoop(drawnosdcard);
       }
         sdinfo_readStats();

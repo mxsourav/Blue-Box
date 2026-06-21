@@ -31,11 +31,16 @@ STARTED  : 2026-06-02
  STATUS   : Compiled & Flashed
 
 ------------------------------------------------------------------------------
- v1.1.0 — [PENDING] — [NEXT MAJOR CHANGE]
+ v2.0.0 — 2026-06-22 — WIFI PENTESTING TOOLSET STABLE RELEASE
 ------------------------------------------------------------------------------
- CHANGE   : [describe here]
- DETAILS  : [bullet points]
- STATUS   : [Compiled / Tested / Flashed]
+ CHANGE   : Major WiFi security tooling update for authorized lab testing.
+ DETAILS  :
+   • Added beacon spam tooling.
+   • Expanded WiFi scanning and deauth workflows.
+   • Reworked menu integration for WiFi pentesting tools.
+   • Added PlatformIO board configuration for ESP32-S3 N16R8 builds.
+   • Added serial/web tooling support files for local device workflows.
+ STATUS   : Stable release candidate, compiled and packaged for GitHub release.
 
 ================================================================================
  NOTES:

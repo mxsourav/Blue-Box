@@ -46,7 +46,7 @@ void handlenfcmenu() {
 
 
 
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
 
       switch (selectedItem) {
 

@@ -3,7 +3,7 @@ void drawCancelledMessage();
 
 void restartesp() {
   
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
     delay(200);
     restartDevice();
   }

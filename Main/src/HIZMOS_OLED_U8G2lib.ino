@@ -79,6 +79,22 @@
 #include "esp_system.h"
 #include "version.h"
 
+// --- NEW SNIFFER ARCHITECTURE ---
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+
+#define SNIFFER_QUEUE_SIZE 100
+QueueHandle_t snifferPacketQueue;
+
+struct SnifferPacket {
+  wifi_promiscuous_pkt_type_t type;
+  uint16_t length;
+};
+
+extern void snifferWorkerTask(void *pvParameters);
+// --------------------------------
+
 // Forward declarations to prevent compiler scope errors
 void loading();
 void scanningwifi();
@@ -142,19 +158,43 @@ int wifi_selectedIndex = 0;
 int wifi_networkCount = 0;
 bool wifi_showInfo = false;
 
-// ===== WiFi Deauther State =====
+// ===== WiFi Deauther & Beacon State =====
 bool deauthMode = false;
+bool beaconMode = false;
 bool deauthActive = false;
-unsigned long deauthFrameCount = 0;
-unsigned long deauthFailedCount = 0; // Tracks failed transmissions
-unsigned long deauthFrameCounterThisSecond = 0;
-unsigned long deauthFps = 0;
-unsigned long lastDeauthSendTime = 0;
+bool beaconActive = false;
+unsigned long txAttemptCount = 0;
+unsigned long txSuccessCount = 0;
+unsigned long txFailCount = 0;
+unsigned long txSuccessCounterThisSecond = 0;
+unsigned long txFps = 0;
+unsigned long lastAttackSendTime = 0;
 unsigned long lastFpsUpdateTime = 0;
-String deauthTargetSSID = "";
-String deauthTargetMACStr = "";
-uint8_t deauthTargetMAC[6] = {0};
-uint8_t deauthTargetChannel = 1;
+String attackTargetSSID = "";
+String attackTargetMACStr = "";
+uint8_t attackTargetMAC[6] = {0};
+uint8_t attackTargetChannel = 1;
+
+// ===== Beacon Spam State & Telemetry =====
+QueueHandle_t beaconSpamQueue;
+TaskHandle_t beaconSpamTaskHandle = NULL;
+bool beaconSpamActive = false;
+unsigned long bsAttemptCount = 0;
+unsigned long bsSuccessCount = 0;
+unsigned long bsFailCount = 0;
+unsigned long bsSuccessCounterThisSecond = 0;
+unsigned long bsFps = 0;
+unsigned long lastBsFpsUpdateTime = 0;
+uint16_t bsSequence = 0;
+uint8_t bsCurrentChannel = 1;
+uint8_t bsMode = 0; 
+uint8_t bsAPCount = 50;
+
+struct AttackCommand {
+  uint8_t action; // 1 = Start, 0 = Stop
+};
+
+extern void beaconSpamWorkerTask(void *pvParameters);
 
 /*
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(
@@ -268,7 +308,7 @@ void setColor(uint8_t r, uint8_t g, uint8_t b) {
 #define irsenderpin  15  // Moved from 35 (PSRAM pin)
 #define irrecivepin  3   // Moved from 36 (PSRAM pin)
 
-// SD detect pin is disabled to free up GPIO 0 (BOOT) for the external boot button setup.
+#define SD_DETECT_PIN 0
 
 // ===== NRF24L01 SPI (FSPI) - ACTIVE MODULE =====
 #define NRF_SCK   18
@@ -634,17 +674,70 @@ void lazyinit(){
 bool cc1Inited = false;
 bool cc2Inited = false;
 void lazyInitCC1101(uint8_t which) {
-  // CC1101 is NOT physically connected — all pins are dummy (99)
-  // Skip all SPI/GPIO operations to avoid undefined behavior on invalid pins
-  Serial.println("CC1101 not present — skipping init");
+  struct CCModule {
+    uint8_t cs;
+    uint8_t gdo0;
+    uint8_t gdo2;
+    bool *initedFlag;
+    const char* name;
+  };
 
+  CCModule modules[2] = {
+    {CC1101_CS, CC1101_GDO0, CC1101_GDO2, &cc1Inited, "CC1101 #1"},
+    {CC1101_2_CS, CC1101_2_GDO0, CC1101_2_GDO2, &cc2Inited, "CC1101 #2"}
+  };
+
+  // أولاً، نفك أي interrupt قديم
+  detachInterrupt(digitalPinToInterrupt(CC1101_GDO0));
+  detachInterrupt(digitalPinToInterrupt(CC1101_2_GDO0));
+
+  // عمل init لكل موديول لو مش متعمل قبل كده
+  for (int i = 0; i < 2; i++) {
+    if (!*(modules[i].initedFlag)) {
+      ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, modules[i].cs);
+      ELECHOUSE_cc1101.setGDO(modules[i].gdo0, modules[i].gdo2);
+
+      if (!ELECHOUSE_cc1101.getCC1101()) {
+        Serial.print(modules[i].name);
+        Serial.println(" NOT FOUND");
+        *(modules[i].initedFlag) = false;
+      } else {
+        ELECHOUSE_cc1101.Init();
+        setupOOKMode();
+        pinMode(modules[i].gdo0, INPUT);
+        *(modules[i].initedFlag) = true;
+      }
+    }
+  }
+
+  // بعد الـ init، نختار الـ active module
+  if (which == 1 || which == 2) {
+    CCModule &selected = modules[which - 1];
+    ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, selected.cs);
+    ELECHOUSE_cc1101.setGDO(selected.gdo0, selected.gdo2);
+    attachInterrupt(digitalPinToInterrupt(selected.gdo0), pulseISR, CHANGE);
+  } else {
+    Serial.println("Invalid selection");
+  }
+
+ 
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(10, 25, "CC1101 Module");
-  u8g2.drawStr(10, 40, "Not Connected");
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  for (int i = 0; i < 2; i++) {
+    const char* status = (*(modules[i].initedFlag)) ? "INIT OK" : "NOT FOUND";
+    if ((i + 1) == which) {
+      u8g2.drawStr(0, 15 * (i+1), modules[i].name);
+      u8g2.drawStr(80, 15 * (i+1), status);
+      u8g2.drawStr(100, 15 * (i+1), "<SELECTED>");
+    } else {
+      u8g2.drawStr(0, 15 * (i+1), modules[i].name);
+      u8g2.drawStr(80, 15 * (i+1), status);
+    }
+  }
   u8g2.sendBuffer();
-  delay(1500);
-  return;
+
+  Serial.print("CC1101 ACTIVE: ");
+  Serial.println(which);
 }
 
 
@@ -789,20 +882,13 @@ int custom_digitalRead(uint8_t pin) {
     return debouncedState[pin];
   }
 
-  // Return HIGH (released) for any invalid or unassigned pins
-  if (pin > 48) {
-    return HIGH;
-  }
-
   return (digitalRead)(pin); // Default behavior for other pins
 }
 
 bool selectPressed() {
   if (digitalRead(BTN_SELECT) == LOW) {
     Serial.println("[BUTTON] SELECT pressed!");
-    while (digitalRead(BTN_SELECT) == LOW) {
-      delay(10);  // Yield while waiting for button release
-    }
+    while (digitalRead(BTN_SELECT) == LOW);  
     return true;
   }
   return false;
@@ -830,9 +916,6 @@ void runLoop(void (*func)()) {
       Serial.println("[BUTTON] BACK pressed (exit loop)!");
       break;
     }
-
-    // Yield to FreeRTOS scheduler to prevent Task WDT resets
-    delay(1);
   }
 }
 
@@ -944,9 +1027,9 @@ void runButtonDiagnostic() {
     
     char buf[64];
     u8g2.drawStr(2, 18, "BUTTONS:");
-    snprintf(buf, sizeof(buf), "UP:G4(%s) DOWN:G11(%s) SEL:G5(%s)", p4 == LOW ? "L" : "H", p11 == LOW ? "L" : "H", p5 == LOW ? "L" : "H");
+    sprintf(buf, "UP:G4(%s) DOWN:G11(%s) SEL:G5(%s)", p4 == LOW ? "L" : "H", p11 == LOW ? "L" : "H", p5 == LOW ? "L" : "H");
     u8g2.drawStr(2, 27, buf);
-    snprintf(buf, sizeof(buf), "LF:G6(%s) RT:G10(%s) BAK:G7(%s)", p6 == LOW ? "L" : "H", p10 == LOW ? "L" : "H", p7 == LOW ? "L" : "H");
+    sprintf(buf, "LF:G6(%s) RT:G10(%s) BAK:G7(%s)", p6 == LOW ? "L" : "H", p10 == LOW ? "L" : "H", p7 == LOW ? "L" : "H");
     u8g2.drawStr(2, 36, buf);
     
     u8g2.drawHLine(0, 39, 128);
@@ -993,6 +1076,65 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println("--- HIZMOS BOOT START ---");
+
+  // --- INDIA REGION RF COMPLIANCE ---
+  Serial.println("Configuring India WiFi Region (IN, Channels 1-13)...");
+  WiFi.mode(WIFI_STA);
+  esp_wifi_set_country_code("IN", true);
+  wifi_country_t country_config = {
+    .cc = "IN",
+    .schan = 1,
+    .nchan = 13,
+    .max_tx_power = 20, // 20 dBm (100mW) limit
+    .policy = WIFI_COUNTRY_POLICY_MANUAL
+  };
+  esp_wifi_set_country(&country_config);
+  
+  // --- VERIFY SANITY CHECK OVERRIDE LINKAGE ---
+  extern int ieee80211_raw_frame_sanity_check(int32_t, int32_t, int32_t);
+  int overrideResult = ieee80211_raw_frame_sanity_check(0, 0, 0);
+  if (overrideResult == 0) {
+    Serial.println("[BOOT] Sanity check override LINKED and ACTIVE (returns 0 = PASS)");
+  } else {
+    Serial.printf("[BOOT] WARNING: Override returns %d (expected 0)!\n", overrideResult);
+  }
+  // --------------------------------
+  
+  WiFi.mode(WIFI_OFF);
+  // --------------------------------
+
+  // --- NEW SNIFFER ARCHITECTURE ---
+  snifferPacketQueue = xQueueCreate(SNIFFER_QUEUE_SIZE, sizeof(SnifferPacket));
+  if (snifferPacketQueue == NULL) {
+    Serial.println("Failed to create sniffer queue!");
+  }
+
+  TaskHandle_t snifferWorkerTaskHandle = NULL;
+  xTaskCreatePinnedToCore(
+    snifferWorkerTask,
+    "SnifferWorker",
+    4096,
+    NULL,
+    1,
+    &snifferWorkerTaskHandle,
+    0
+  );
+
+  Serial.println("Creating Beacon Spam Queue & Worker Task on Core 0...");
+  beaconSpamQueue = xQueueCreate(5, sizeof(AttackCommand));
+  if (beaconSpamQueue == NULL) {
+    Serial.println("Failed to create beacon spam queue!");
+  }
+  xTaskCreatePinnedToCore(
+    beaconSpamWorkerTask,
+    "BeaconSpam",
+    4096,
+    NULL,
+    1,
+    &beaconSpamTaskHandle,
+    0
+  );
+  // --------------------------------
 
   // --- DIAGNOSTIC LED CODE ---
   rtcBootCount++;
@@ -1045,6 +1187,7 @@ void setup() {
   pinMode(BTN_BACK, INPUT_PULLUP);
   pinMode(BTN_LEFT, INPUT_PULLUP);
   pinMode(BTN_RIGHT, INPUT_PULLUP);
+  pinMode(SD_DETECT_PIN, INPUT_PULLUP);
 
   Serial.println("Initializing CS/CE pins...");
   pinMode(SD_CS, OUTPUT);

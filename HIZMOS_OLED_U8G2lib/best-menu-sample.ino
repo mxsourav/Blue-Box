@@ -34,7 +34,7 @@ void handlesamplemenu() {
     }
 
    
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       switch (selectedItem) {
         case 0: /* readNFCTag(); */ break;
         case 1: /* writeNFCData(); */ break;

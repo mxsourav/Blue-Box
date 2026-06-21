@@ -122,7 +122,7 @@ float evalExpression(String expr) {
       if (op == '+') total += val;
       else if (op == '-') total -= val;
       else if (op == '*') total *= val;
-      else if (op == '/') { if (val != 0) total /= val; }
+      else if (op == '/') total /= val;
       op = ch;
       num = "";
     }
@@ -132,7 +132,7 @@ float evalExpression(String expr) {
     if (op == '+') total += val;
     else if (op == '-') total -= val;
     else if (op == '*') total *= val;
-    else if (op == '/') { if (val != 0) total /= val; }
+    else if (op == '/') total /= val;
   }
   return total;
 }

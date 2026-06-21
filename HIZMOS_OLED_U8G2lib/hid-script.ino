@@ -292,7 +292,7 @@ void hidInit() {
 
 // Start SD card with HSPI
 
-if (!SD.begin(SD_CS, SD_SPI)) {
+if (!false) {
 
   runLoop(drawnosdcard);
 
@@ -354,7 +354,7 @@ void hidscriptmenu() {
 
     delay(200);
 
-  } else if (digitalRead(BTN_SELECT) == LOW) {
+  } else if (selectPressed()) {
 
     String path = "/" + hidFileList[hidSelectedIndex];
 

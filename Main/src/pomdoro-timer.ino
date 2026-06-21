@@ -92,7 +92,7 @@ void drawUI() {
   int minutes = currentDuration / 60;
   int seconds = currentDuration % 60;
   char timeStr[6];
-  snprintf(timeStr, sizeof(timeStr), "%02d:%02d", minutes, seconds);
+  sprintf(timeStr, "%02d:%02d", minutes, seconds);
 
   u8g2.drawRFrame(34, 27, 60, 24, 6); // إطار الوقت
   u8g2.setFont(u8g2_font_logisoso20_tr);

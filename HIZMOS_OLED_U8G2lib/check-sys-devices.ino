@@ -48,7 +48,7 @@ void checksysdevices() {
 
   // ----- Init radio2 -----
 
-  if (radio2.begin(&RADIO_SPI)) {
+  if (false) {
 
     radio2_state = "work";
 
@@ -62,7 +62,7 @@ void checksysdevices() {
 
   // ----- Init SD Card -----
 
-  if (SD.begin(SD_CS, SD_SPI)) {
+  if (false) {
 
     sd_state = "work";
 

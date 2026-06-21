@@ -205,7 +205,7 @@ void spacegame() {
     if (!digitalRead(BTN_RIGHT) && invadersPlayerX < 117) {
       invadersPlayerX += 7;
     }
-    if (!digitalRead(BTN_SELECT)) {
+    if (selectPressed()) {
       invadersShoot();
       delay(50);  // Fire rate limit
     }

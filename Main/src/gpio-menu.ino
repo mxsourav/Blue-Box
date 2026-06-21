@@ -190,10 +190,14 @@ void checksdcardpin() {
 
 
 
-  if (SD.begin(SD_CS, SD_SPI)) {
+  if (digitalRead(SD_DETECT_PIN) == LOW) {
+
     u8g2.drawStr(20, 35, "SD Card Inserted");
+
   } else {
+
     u8g2.drawStr(18, 35, "SD Card Removed");
+
   }
 
 

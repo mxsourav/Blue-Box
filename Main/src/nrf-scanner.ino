@@ -44,13 +44,12 @@ void scanAll() {
         hits1[ch]++;
       }
 
-      // radio2 not connected — skipped
-      // radio2.setChannel(ch);
-      // delayMicroseconds(130);
-      // if (radio2.testRPD()) {
-      //   r2++;
-      //   hits2[ch]++;
-      // }
+      radio2.setChannel(ch);
+      delayMicroseconds(130);
+      if (radio2.testRPD()) {
+        r2++;
+        hits2[ch]++;
+      }
     }
 
     strength1[ch] = map(r1, 0, SAMPLES, 0, GRAPH_HEIGHT);
@@ -74,8 +73,8 @@ void drawnrfGraph() {
   u8g2.clearBuffer();
 
   // Header
-  char label[40];
-  snprintf(label, sizeof(label), "R1 ch%d:%d", mostActive1, hits1[mostActive1]);
+  char label[32];
+  sprintf(label, "R1 %d:%d | R2 %d:%d", mostActive1, hits1[mostActive1], mostActive2, hits2[mostActive2]);
   u8g2.drawStr(0, 8, label);
 
   float channelStep = 125.0 / (SCREEN_WIDTH - 1);  // Ensure last pixel maps to ch=125
@@ -118,7 +117,7 @@ void drawnrfGraph() {
   // Channel labels
   for (uint8_t ch = 0; ch <= 125; ch += 25) {
     uint8_t x = round((float)ch / 125 * (SCREEN_WIDTH - 1));
-    snprintf(label, sizeof(label), "%d", ch);
+    sprintf(label, "%d", ch);
     u8g2.drawStr(x, GRAPH_HEIGHT + 8, label);
   }
 

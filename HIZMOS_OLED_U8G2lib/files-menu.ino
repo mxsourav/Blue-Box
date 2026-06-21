@@ -97,7 +97,7 @@ String inputreName() {
       delay(150);
     }
 
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       int keyIndex = (cursorY + offsetY) * cols + cursorX;
       if (keyIndex < totalKeys) {
         const char* key = keys[keyIndex];
@@ -260,7 +260,7 @@ void filemenu() {
       if (filoContextIndex < 2) filoContextIndex++;
       delay(150);
     }
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       String selectedFile = filoFileList[filoSelectedIndex];
       if (filoContextIndex == 0) {
         filoViewingFile = SD.open("/" + selectedFile);
@@ -291,7 +291,7 @@ void filemenu() {
         u8g2.sendBuffer();
         while (true) {
           delay(400);
-          if (digitalRead(BTN_SELECT) == LOW) {
+          if (selectPressed()) {
             SD.remove("/" + selectedFile);
             filoRoot.rewindDirectory();
             listFiles(filoRoot);
@@ -326,7 +326,7 @@ void filemenu() {
     delay(150);
   }
 
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
     filoContextMenuActive = true;
     filoContextIndex = 0;
     delay(200);
@@ -336,7 +336,7 @@ void filemenu() {
 
 void filesetup() {
 
-if (!SD.begin(SD_CS, SD_SPI)) {
+if (!false) {
  runLoop(drawnosdcard);
   }
 

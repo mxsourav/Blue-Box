@@ -62,7 +62,7 @@ void recvIR() {
 
   if (digitalRead(BTN_BACK) == LOW) {
         delay(200);
-        while(digitalRead(BTN_BACK) == LOW) { delay(10); }
+        while(digitalRead(BTN_BACK) == LOW);
         inIrSubmenu = false;
         
         return;
@@ -107,8 +107,8 @@ const char* type = IrReceiver.getProtocolString();
 // تحويل الأرقام إلى نصوص
 char addrStr[10];
 char cmdStr[10];
-snprintf(addrStr, sizeof(addrStr), "%04X", addr);  // HEX
-snprintf(cmdStr, sizeof(cmdStr), "%04X", cmd);    // HEX
+sprintf(addrStr, "%04X", addr);  // HEX
+sprintf(cmdStr, "%04X", cmd);    // HEX
 
 u8g2.clearBuffer();
 u8g2.setFontMode(1);
@@ -153,7 +153,6 @@ u8g2.sendBuffer();
 
 
     irRawData = "";
-    irRawData.reserve(rawlen * 8);
     for (uint8_t i = 1; i < rawlen; i++) {
       irRawData += String(IrReceiver.irparams.rawbuf[i] * MICROS_PER_TICK);
       if (i < rawlen - 1) irRawData += ",";
@@ -170,7 +169,7 @@ u8g2.sendBuffer();
 
       if (digitalRead(BTN_BACK) == LOW) {
         delay(200);
-        while(digitalRead(BTN_BACK) == LOW) { delay(10); }
+        while(digitalRead(BTN_BACK) == LOW);
         inIrSubmenu = false;
         
         return;
@@ -178,7 +177,7 @@ u8g2.sendBuffer();
       // بقية الأزرار كالسابق...
     
 
-        while (digitalRead(BTN_SELECT) == LOW) { delay(10); }
+        while (digitalRead(BTN_SELECT) == LOW);
         String name = inputName();
         if (name != "") {
           File f = SD.open("/" + name + ".ir", FILE_WRITE);
@@ -237,7 +236,6 @@ static const unsigned char image_FILLED_bits[] U8X8_PROGMEM = {0xff,0xff,0xff,0x
         delay(2000);
         return;
       }
-      delay(10);
     }
   }
 }
@@ -349,7 +347,6 @@ String inputName() {
     if (digitalRead(BTN_BACK) == LOW) {
       return ""; // Cancel input
     }
-    delay(10);
   }
 }
 
@@ -393,12 +390,8 @@ void replayRaw(String data) {
   uint16_t raw[maxLen];
   int index = 0;
 
-  // Cap buffer to prevent stack overflow from crafted .ir files
-  const int maxBufLen = 2048;
-  int dataLen = data.length();
-  if (dataLen > maxBufLen - 1) dataLen = maxBufLen - 1;
-  static char buf[maxBufLen];
-  data.substring(0, dataLen).toCharArray(buf, maxBufLen);
+  char buf[data.length() + 1];
+  data.toCharArray(buf, sizeof(buf));
   char *token = strtok(buf, ",");
   while (token != NULL && index < maxLen) {
     raw[index++] = atoi(token);
@@ -447,7 +440,7 @@ void fileOptions(String filename) {
 
     // تنفيذ الاختيار
     if (digitalRead(BTN_SELECT) == LOW) {
-      delay(200); while (digitalRead(BTN_SELECT) == LOW) { delay(10); }
+      delay(200); while (digitalRead(BTN_SELECT) == LOW);
       String selected = opts[optIndex];
 
       if (selected == "Run") {
@@ -483,7 +476,7 @@ void fileOptions(String filename) {
         }
 
         std::vector<String> lines;
-        while (f.available() && lines.size() < 100) {
+        while (f.available()) {
           String line = f.readStringUntil('\n');
           line.trim();
           lines.push_back(line);
@@ -529,19 +522,17 @@ void fileOptions(String filename) {
             delay(150);
           }
           if (digitalRead(BTN_BACK) == LOW) {
-            delay(200); while (digitalRead(BTN_BACK) == LOW) { delay(10); }
+            delay(200); while (digitalRead(BTN_BACK) == LOW);
             break;
           }
-          delay(10);
         }
       }
     }
 
     if (digitalRead(BTN_BACK) == LOW) {
-      delay(200); while (digitalRead(BTN_BACK) == LOW) { delay(10); }
+      delay(200); while (digitalRead(BTN_BACK) == LOW);
       break;
     }
-    delay(10);
   }
 
   listIRFiles();  // عرض الملفات بعد الخروج
@@ -606,7 +597,7 @@ void listIRFiles() {
     u8g2.sendBuffer();
 
     if (digitalRead(BTN_SELECT) == LOW) {
-      delay(200); while(digitalRead(BTN_SELECT)==LOW) { delay(10); }
+      delay(200); while(digitalRead(BTN_SELECT)==LOW);
       fileOptions(irFileList[selectedIndex]);
       break;
     }
@@ -626,7 +617,6 @@ void listIRFiles() {
       if (selectedIndex > viewOffset + visibleItems - 1) viewOffset++;
       delay(150);
     }
-    delay(10);
   }
 }
 

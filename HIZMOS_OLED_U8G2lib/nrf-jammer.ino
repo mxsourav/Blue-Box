@@ -238,7 +238,7 @@ void nrfjammer() {
 
 
 
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
 
     handleSelection(nrf::currentPage);
 

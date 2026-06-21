@@ -79,6 +79,25 @@
 #include "esp_system.h"
 #include "version.h"
 
+// --- NEW SNIFFER ARCHITECTURE ---
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+
+#define SNIFFER_QUEUE_SIZE 100
+QueueHandle_t snifferPacketQueue;
+
+struct SnifferPacket {
+  wifi_promiscuous_pkt_type_t type;
+  uint16_t length;
+};
+
+extern void snifferWorkerTask(void *pvParameters);
+// --------------------------------
+
+
+
+
 // Forward declarations to prevent compiler scope errors
 void loading();
 void scanningwifi();
@@ -142,18 +161,43 @@ int wifi_selectedIndex = 0;
 int wifi_networkCount = 0;
 bool wifi_showInfo = false;
 
-// ===== WiFi Deauther State =====
+// ===== WiFi Deauther & Beacon State =====
 bool deauthMode = false;
+bool beaconMode = false;
 bool deauthActive = false;
-unsigned long deauthFrameCount = 0;
-unsigned long deauthFrameCounterThisSecond = 0;
-unsigned long deauthFps = 0;
-unsigned long lastDeauthSendTime = 0;
+bool beaconActive = false;
+unsigned long txAttemptCount = 0;
+unsigned long txSuccessCount = 0;
+unsigned long txFailCount = 0;
+unsigned long txSuccessCounterThisSecond = 0;
+unsigned long txFps = 0;
+unsigned long lastAttackSendTime = 0;
 unsigned long lastFpsUpdateTime = 0;
-String deauthTargetSSID = "";
-String deauthTargetMACStr = "";
-uint8_t deauthTargetMAC[6] = {0};
-uint8_t deauthTargetChannel = 1;
+String attackTargetSSID = "";
+String attackTargetMACStr = "";
+uint8_t attackTargetMAC[6] = {0};
+uint8_t attackTargetChannel = 1;
+
+// ===== Beacon Spam State & Telemetry =====
+QueueHandle_t beaconSpamQueue;
+TaskHandle_t beaconSpamTaskHandle = NULL;
+bool beaconSpamActive = false;
+unsigned long bsAttemptCount = 0;
+unsigned long bsSuccessCount = 0;
+unsigned long bsFailCount = 0;
+unsigned long bsSuccessCounterThisSecond = 0;
+unsigned long bsFps = 0;
+unsigned long lastBsFpsUpdateTime = 0;
+uint16_t bsSequence = 0;
+uint8_t bsCurrentChannel = 1;
+uint8_t bsMode = 0; 
+uint8_t bsAPCount = 50;
+
+struct AttackCommand {
+  uint8_t action; // 1 = Start, 0 = Stop
+};
+
+extern void beaconSpamWorkerTask(void *pvParameters);
 
 /*
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(
@@ -338,8 +382,28 @@ extern int lastBackClickType;
 extern unsigned long lastBackPressTime;
 extern int backPressCount;
 
+
+// ===== SAFE GPIO & VIRTUAL INPUT LAYER =====
+uint8_t virtualBtnState[256];
+
+bool isValidGPIO(int pin) {
+    if (pin < 0 || pin > 48 || pin == 99) return false;
+    return true;
+}
+
+void safePinMode(int pin, uint8_t mode) {
+    if (isValidGPIO(pin)) (pinMode)(pin, mode);
+}
+
+void safeDigitalWrite(int pin, uint8_t val) {
+    if (isValidGPIO(pin)) (digitalWrite)(pin, val);
+}
+
 int custom_digitalRead(uint8_t pin);
+#define pinMode(pin, mode) safePinMode(pin, mode)
+#define digitalWrite(pin, val) safeDigitalWrite(pin, val)
 #define digitalRead(pin) custom_digitalRead(pin)
+// ===========================================
 
 // Jamming time per channel (ms)
 #define JAM_DURATION 500
@@ -350,7 +414,7 @@ const int totalManualImages = 11;
 
 
 int batteryPercent = 87;    // أو من قراءاتك
-bool sdOK = true;           // يعتمد على if (SD.begin(...))
+bool sdOK = true;           // يعتمد على if (false)
 
 
 ///////////////////////////////////////
@@ -603,8 +667,8 @@ CCSelect activeCC = CC_NONE;
 /*
 void lazyinit(){
   // Initialize CC1101
-  ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, CC1101_CS);
-  ELECHOUSE_cc1101.setGDO(CC1101_GDO0, CC1101_GDO2);
+  // ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, CC1101_CS);
+  // ELECHOUSE_cc1101.setGDO(CC1101_GDO0, CC1101_GDO2);
   
   if (ELECHOUSE_cc1101.getCC1101()) {
     Serial.println("CC1101 detected!");
@@ -616,14 +680,16 @@ void lazyinit(){
      delay(1000);
   }
   
-  ELECHOUSE_cc1101.Init();
+  // ELECHOUSE_cc1101.Init();
   
   // Setup for car remotes (OOK mode)
   setupOOKMode();
 
   // Setup interrupt for pulse capture
-  pinMode(CC1101_GDO0, INPUT);
-  attachInterrupt(digitalPinToInterrupt(CC1101_GDO0), pulseISR, CHANGE);
+  if (CC1101_GDO0 != 99) {
+    pinMode(CC1101_GDO0, INPUT);
+    attachInterrupt(digitalPinToInterrupt(CC1101_GDO0), pulseISR, CHANGE);
+  }
 
 }
 */
@@ -653,15 +719,15 @@ void lazyInitCC1101(uint8_t which) {
   // عمل init لكل موديول لو مش متعمل قبل كده
   for (int i = 0; i < 2; i++) {
     if (!*(modules[i].initedFlag)) {
-      ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, modules[i].cs);
-      ELECHOUSE_cc1101.setGDO(modules[i].gdo0, modules[i].gdo2);
+      // ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, modules[i].cs);
+      // ELECHOUSE_cc1101.setGDO(modules[i].gdo0, modules[i].gdo2);
 
       if (!ELECHOUSE_cc1101.getCC1101()) {
         Serial.print(modules[i].name);
         Serial.println(" NOT FOUND");
         *(modules[i].initedFlag) = false;
       } else {
-        ELECHOUSE_cc1101.Init();
+        // ELECHOUSE_cc1101.Init();
         setupOOKMode();
         pinMode(modules[i].gdo0, INPUT);
         *(modules[i].initedFlag) = true;
@@ -672,8 +738,8 @@ void lazyInitCC1101(uint8_t which) {
   // بعد الـ init، نختار الـ active module
   if (which == 1 || which == 2) {
     CCModule &selected = modules[which - 1];
-    ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, selected.cs);
-    ELECHOUSE_cc1101.setGDO(selected.gdo0, selected.gdo2);
+    // ELECHOUSE_cc1101.setSpiPin(cc1101_SCK, cc1101_MISO, cc1101_MOSI, selected.cs);
+    // ELECHOUSE_cc1101.setGDO(selected.gdo0, selected.gdo2);
     attachInterrupt(digitalPinToInterrupt(selected.gdo0), pulseISR, CHANGE);
   } else {
     Serial.println("Invalid selection");
@@ -741,7 +807,6 @@ static unsigned long lastStateChangeTime[48];
 static bool buttonInitDone = false;
 
 // Edge detection: tracks whether a button press has already been consumed
-static bool selectConsumed = false;  // true = press already reported, waiting for release
 static bool backConsumed = false;
 
 void initButtons() {
@@ -754,13 +819,19 @@ void initButtons() {
     lastRawState[pin] = HIGH;
     lastStateChangeTime[pin] = 0;
   }
-  selectConsumed = false;
   backConsumed = false;
   buttonInitDone = true;
 }
 
 void updatePin(uint8_t pin) {
-  bool raw = (digitalRead)(pin); // Raw read
+  bool raw = HIGH;
+  bool isVirtual = false;
+  if (pin >= 0 && pin < 256 && virtualBtnState[pin] == LOW) {
+      raw = LOW;
+      isVirtual = true;
+  } else if (isValidGPIO(pin)) {
+      raw = (digitalRead)(pin); // Raw physical read
+  }
   unsigned long now = millis();
   
   if (raw != lastRawState[pin]) {
@@ -768,7 +839,7 @@ void updatePin(uint8_t pin) {
     lastRawState[pin] = raw;
   }
   
-  if (now - lastStateChangeTime[pin] >= DEBOUNCE_TIME) {
+  if (isVirtual || now - lastStateChangeTime[pin] >= DEBOUNCE_TIME) {
     debouncedState[pin] = raw;
   }
 }
@@ -818,30 +889,28 @@ int custom_digitalRead(uint8_t pin) {
     return HIGH;
   }
 
-  // --- EDGE DETECTION for SELECT (OK) button ---
+  // --- EDGE DETECTION for D-pad and SELECT buttons ---
   // Only return LOW once per press. Must release and re-press for next input.
-  if (pin == BTN_SELECT) {
-    if (debouncedState[BTN_SELECT] == HIGH) {
+  if (pin == BTN_UP || pin == BTN_DOWN || pin == BTN_LEFT || pin == BTN_RIGHT || pin == BTN_SELECT) {
+    static bool edgeConsumed[256] = {false};
+    if (debouncedState[pin] == HIGH) {
       // Button is released — reset consumed flag
-      selectConsumed = false;
+      edgeConsumed[pin] = false;
       return HIGH;
     }
     // Button is LOW (pressed)
-    if (!selectConsumed) {
+    if (!edgeConsumed[pin]) {
       // First time detecting this press — report LOW and consume it
-      selectConsumed = true;
+      edgeConsumed[pin] = true;
       return LOW;
     }
     // Already consumed this press — return HIGH until released
     return HIGH;
   }
 
-  // UP/DOWN/LEFT/RIGHT: level-based (allows hold-to-scroll)
-  if (pin == BTN_UP || pin == BTN_DOWN || pin == BTN_LEFT || pin == BTN_RIGHT) {
-    return debouncedState[pin];
-  }
-
-  return (digitalRead)(pin); // Default behavior for other pins
+  if (pin >= 0 && pin < 256 && virtualBtnState[pin] == LOW) return LOW;
+  if (isValidGPIO(pin)) return (digitalRead)(pin);
+  return HIGH;
 }
 
 bool selectPressed() {
@@ -1031,10 +1100,73 @@ void playGlitchAnimation(const uint8_t* baseImage, unsigned long durationMs) {
   }
 }
 
+extern "C" int ieee80211_raw_frame_sanity_check(int32_t, int32_t, int32_t);
+
 void setup() {
+
+  for (int i=0; i<256; i++) virtualBtnState[i] = HIGH;
+
   Serial.begin(115200);
   delay(1000);
   Serial.println("--- HIZMOS BOOT START ---");
+
+  // --- INDIA REGION RF COMPLIANCE ---
+  Serial.println("Configuring India WiFi Region (IN, Channels 1-13)...");
+  WiFi.mode(WIFI_STA);
+  esp_wifi_set_country_code("IN", true);
+  wifi_country_t country_config = {
+    .cc = "IN",
+    .schan = 1,
+    .nchan = 13,
+    .max_tx_power = 20, // 20 dBm (100mW) limit
+    .policy = WIFI_COUNTRY_POLICY_MANUAL
+  };
+  esp_wifi_set_country(&country_config);
+  
+  // --- VERIFY SANITY CHECK OVERRIDE LINKAGE ---
+  int overrideResult = ieee80211_raw_frame_sanity_check(0, 0, 0);
+  if (overrideResult == 0) {
+    Serial.println("[BOOT] Sanity check override LINKED and ACTIVE (returns 0 = PASS)");
+  } else {
+    Serial.printf("[BOOT] WARNING: Override returns %d (expected 0)!\n", overrideResult);
+  }
+  // --------------------------------
+  
+  WiFi.mode(WIFI_OFF);
+  // --------------------------------
+
+  // --- NEW SNIFFER ARCHITECTURE ---
+  snifferPacketQueue = xQueueCreate(SNIFFER_QUEUE_SIZE, sizeof(SnifferPacket));
+  if (snifferPacketQueue == NULL) {
+    Serial.println("Failed to create sniffer queue!");
+  }
+
+  TaskHandle_t snifferWorkerTaskHandle = NULL;
+  xTaskCreatePinnedToCore(
+    snifferWorkerTask,
+    "SnifferWorker",
+    4096,
+    NULL,
+    1,
+    &snifferWorkerTaskHandle,
+    0
+  );
+
+  Serial.println("Creating Beacon Spam Queue & Worker Task on Core 0...");
+  beaconSpamQueue = xQueueCreate(5, sizeof(AttackCommand));
+  if (beaconSpamQueue == NULL) {
+    Serial.println("Failed to create beacon spam queue!");
+  }
+  xTaskCreatePinnedToCore(
+    beaconSpamWorkerTask,
+    "BeaconSpam",
+    4096,
+    NULL,
+    1,
+    &beaconSpamTaskHandle,
+    0
+  );
+  // --------------------------------
 
   // --- DIAGNOSTIC LED CODE ---
   rtcBootCount++;
@@ -1091,10 +1223,10 @@ void setup() {
 
   Serial.println("Initializing CS/CE pins...");
   pinMode(SD_CS, OUTPUT);
-  pinMode(CSN1_PIN, OUTPUT);
-  pinMode(CSN2_PIN, OUTPUT);
-  pinMode(CE1_PIN, OUTPUT);
-  pinMode(CE2_PIN, OUTPUT);
+  if (CSN1_PIN != 99) pinMode(CSN1_PIN, OUTPUT);
+  if (CSN2_PIN != 99) pinMode(CSN2_PIN, OUTPUT);
+  if (CE1_PIN != 99) pinMode(CE1_PIN, OUTPUT);
+  if (CE2_PIN != 99) pinMode(CE2_PIN, OUTPUT);
 
   Serial.println("Initializing IR...");
   pinMode(irrecivepin, INPUT_PULLUP); // Enable internal pull-up for naked TSOP receiver
@@ -1200,6 +1332,50 @@ void loop() {
     } else {
       prevAutoMode = false;
       handlemainmenu(); 
+    }
+  }
+
+  // --- Serial Command Processing ---
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    if (cmd.length() > 0) {
+      if (cmd == "start beacon") {
+        Serial.println(">>> SERIAL COMMAND RECEIVED: Starting Beacon Menu <<<");
+        deauthActive = false; beaconActive = false; deauthMode = false; beaconMode = true; 
+        wifi_selectedIndex = 0; wifi_showInfo = false; autoMode = false;
+        runLoop(scanningwifi);
+      }
+      else if (cmd == "start wifi") {
+        Serial.println(">>> SERIAL COMMAND RECEIVED: Starting WiFi Menu <<<");
+        deauthActive = false; beaconActive = false; deauthMode = true; beaconMode = false; 
+        wifi_selectedIndex = 0; wifi_showInfo = false; autoMode = false;
+        runLoop(handlewifimenu);
+      }
+      else if (cmd.startsWith("btn ")) {
+        int pin = -1;
+        bool isRelease = false;
+        String action = cmd.substring(4);
+        
+        if (action.startsWith("release ")) {
+            isRelease = true;
+            action = action.substring(8);
+        }
+        
+        if (action == "up") pin = BTN_UP;
+        else if (action == "down") pin = BTN_DOWN;
+        else if (action == "left") pin = BTN_LEFT;
+        else if (action == "right") pin = BTN_RIGHT;
+        else if (action == "select") pin = BTN_SELECT;
+        else if (action == "back") pin = BTN_BACK;
+        
+        if (pin != -1) {
+            virtualBtnState[pin] = isRelease ? HIGH : LOW;
+            Serial.print("[VIRTUAL INPUT] ");
+            Serial.print(action);
+            Serial.println(isRelease ? " RELEASED" : " PRESSED");
+        }
+      }
     }
   }
 }

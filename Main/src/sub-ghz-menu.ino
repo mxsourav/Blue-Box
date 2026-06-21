@@ -144,11 +144,7 @@ void handlesubghzmenu() {
 
        break;
 
-       case 7:
-       // SAVED SIGNALS — not yet implemented
-       drawBoxMessage("SAVED SIGNALS", "Coming soon!");
-       delay(1500);
-       break;
+      
 
     }
 

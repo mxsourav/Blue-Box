@@ -40,14 +40,13 @@ void drawBoxMessage(const char* line1, const char* line2 = nullptr, const char* 
 }
 
 // ==== حذف كل الملفات ====
-void formaterDeleteAllFromSD(File dir, int depth = 0) {
-  if (depth > 10) return; // Prevent stack overflow from deep nesting
+void formaterDeleteAllFromSD(File dir) {
   while (true) {
     File entry = dir.openNextFile();
     if (!entry) break;
 
     if (entry.isDirectory()) {
-      formaterDeleteAllFromSD(entry, depth + 1);
+      formaterDeleteAllFromSD(entry);
       SD.rmdir(entry.name());
     } else {
       SD.remove(entry.name());

@@ -115,7 +115,6 @@ String inputreName() {
     if (digitalRead(BTN_BACK) == LOW) {
       return ""; // cancel
     }
-    delay(10); // Yield to FreeRTOS to prevent WDT reset
   }
 }
 
@@ -127,7 +126,7 @@ void listFiles(File dir) {
     File entry = dir.openNextFile();
     if (!entry) break;
     String name = entry.name();
-    if (!entry.isDirectory() && filoFileCount < 50) {
+    if (!entry.isDirectory()) {
       filoFileList[filoFileCount++] = name;
     }
     entry.close();
@@ -275,7 +274,6 @@ void filemenu() {
           newName += ".txt";
           if (SD.exists("/" + newName)) SD.remove("/" + newName);
           SD.rename("/" + selectedFile, "/" + newName);
-          if (!filoRoot) { filoRoot = SD.open("/"); }
           filoRoot.rewindDirectory();
           listFiles(filoRoot);
           filoSelectedIndex = 0;
@@ -295,7 +293,6 @@ void filemenu() {
           delay(400);
           if (digitalRead(BTN_SELECT) == LOW) {
             SD.remove("/" + selectedFile);
-            if (!filoRoot) { filoRoot = SD.open("/"); }
             filoRoot.rewindDirectory();
             listFiles(filoRoot);
             filoSelectedIndex = 0;
@@ -343,10 +340,8 @@ if (!SD.begin(SD_CS, SD_SPI)) {
  runLoop(drawnosdcard);
   }
 
-  if (filoRoot) filoRoot.close();
   filoRoot = SD.open("/");
   listFiles(filoRoot);
-  filoRoot.close();
 
 
 

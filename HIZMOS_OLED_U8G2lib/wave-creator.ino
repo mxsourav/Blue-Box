@@ -90,7 +90,7 @@ void wavecreator() {
     } else if (!digitalRead(BTN_RIGHT)) {
       selectedWave = (selectedWave + 1) % waveCount;
       delay(50);
-    } else if (!digitalRead(BTN_SELECT)) {
+    } else if (selectPressed()) {
       inMenu = false;
       delay(50);
     }

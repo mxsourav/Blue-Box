@@ -4,7 +4,7 @@ void drawHistogram() {
   u8g2.setFont(u8g2_font_5x7_tr);
 
   char hdr[30];
-  snprintf(hdr, sizeof(hdr), "HIST %.2fMHz", currentFreq);
+  sprintf(hdr, "HIST %.2fMHz", currentFreq);
   u8g2.drawStr(0, 7, hdr);
 
   float span = 1.0;
@@ -269,8 +269,8 @@ void SPECTRUMANALYZER() {
         u8g2.drawStr(20, 8, "frequency analyzer [LOCK]");
     } else {
         
-        char hopMsg[40];
-        snprintf(hopMsg, sizeof(hopMsg), "freq analyzer [HOP:%d/%d]", currentHopIndex + 1, NUM_POPULAR_FREQS);
+        char hopMsg[30];
+        sprintf(hopMsg, "freq analyzer [HOP:%d/%d]", currentHopIndex + 1, NUM_POPULAR_FREQS);
         u8g2.drawStr(10, 8, hopMsg);
     }
     
@@ -280,7 +280,7 @@ void SPECTRUMANALYZER() {
     if (freq_active > 0.1) {
         int freq_int = (int)freq_active;
         int freq_dec = (int)((freq_active - freq_int) * 1000);
-        snprintf(freqStr, sizeof(freqStr), "%03d.%03d", freq_int, freq_dec);
+        sprintf(freqStr, "%03d.%03d", freq_int, freq_dec);
     } else {
         strcpy(freqStr, "000.000");
     }
@@ -294,7 +294,7 @@ void SPECTRUMANALYZER() {
     u8g2.setFont(u8g2_font_profont10_tr);
     char rssiStr[10];
     if (freq_active > 0.1) {
-        snprintf(rssiStr, sizeof(rssiStr), "RS:%d", rssi_active);
+        sprintf(rssiStr, "RS:%d", rssi_active);
     } else {
         strcpy(rssiStr, "RS:---");
     }
@@ -327,7 +327,7 @@ void SPECTRUMANALYZER() {
                 char lastFreq[20];
                 int f_int = (int)freq_history[i];
                 int f_dec = (int)((freq_history[i] - f_int) * 100);
-                snprintf(lastFreq, sizeof(lastFreq), "%d.%02d/%d", f_int, f_dec, rssi_history[i]);
+                sprintf(lastFreq, "%d.%02d/%d", f_int, f_dec, rssi_history[i]);
                 u8g2.drawStr(60, 39 + (displayCount * 11), lastFreq);
                 displayCount++;
             }
@@ -375,7 +375,7 @@ void drawSettingsMenu() {
   } else {
     u8g2.drawStr(2, yPos, " ");
   }
-  snprintf(line, sizeof(line), "Mod: %s", modNames[currentMod]);
+  sprintf(line, "Mod: %s", modNames[currentMod]);
   u8g2.drawStr(10, yPos, line);
   yPos += 12;
   
@@ -389,9 +389,9 @@ void drawSettingsMenu() {
   
   
   if (freqPresetIndex >= 0) {
-    snprintf(line, sizeof(line), "%.2f MHz", presetFreqs[freqPresetIndex]);
+    sprintf(line, "%.2f MHz", presetFreqs[freqPresetIndex]);
   } else {
-    snprintf(line, sizeof(line), "%.2f MHz*", currentFreq);
+    sprintf(line, "%.2f MHz*", currentFreq);
   }
   u8g2.drawStr(10, yPos, line);
   
@@ -416,12 +416,12 @@ void drawSettingsMenu() {
   } else {
     u8g2.drawStr(2, yPos, " ");
   }
-  snprintf(line, sizeof(line), "Hop: %s", hoppingEnabled ? "ON" : "OFF");
+  sprintf(line, "Hop: %s", hoppingEnabled ? "ON" : "OFF");
   u8g2.drawStr(10, yPos, line);
   
   if (hoppingEnabled) {
    
-    snprintf(line, sizeof(line), "[%d/%d]", currentHopIndex + 1, numPresets);
+    sprintf(line, "[%d/%d]", currentHopIndex + 1, numPresets);
     u8g2.drawStr(90, yPos, line);
   }
   yPos += 12;
@@ -433,7 +433,7 @@ void drawSettingsMenu() {
   } else {
     u8g2.drawStr(2, yPos, " ");
   }
-  snprintf(line, sizeof(line), "RXBW: %.0f kHz", rxBW);
+  sprintf(line, "RXBW: %.0f kHz", rxBW);
   u8g2.drawStr(10, yPos, line);
   yPos += 12;
   
@@ -444,7 +444,7 @@ void drawSettingsMenu() {
   } else {
     u8g2.drawStr(2, yPos, " ");
   }
-  snprintf(line, sizeof(line), "Pwr: %d dBm", powerLevel);
+  sprintf(line, "Pwr: %d dBm", powerLevel);
   u8g2.drawStr(10, yPos, line);
   
   // Power bar indicator
@@ -897,11 +897,11 @@ void JAMMINGCC1101() {
     u8g2.setFont(u8g2_font_6x10_tr);
     char info[40];
     
-    snprintf(info, sizeof(info), "Mode: %s", modeNames[expMode]);
+    sprintf(info, "Mode: %s", modeNames[expMode]);
     u8g2.drawStr(3, 38, info);
     
    
-    snprintf(info, sizeof(info), "Time: %02lu:%02lu", elapsed / 60, elapsed % 60);
+    sprintf(info, "Time: %02lu:%02lu", elapsed / 60, elapsed % 60);
     u8g2.drawStr(3, 48, info);
     
     
@@ -916,7 +916,7 @@ void JAMMINGCC1101() {
       
       switch(expMode) {
         case 0: { 
-          snprintf(info, sizeof(info), "TX: %.2f MHz", currentFreq);
+          sprintf(info, "TX: %.2f MHz", currentFreq);
           u8g2.drawStr(3, 58, info);
           
           ELECHOUSE_cc1101.setMHZ(currentFreq);
@@ -937,7 +937,7 @@ void JAMMINGCC1101() {
           const float multiFreqs[] = {433.92, 434.42, 868.30, 915.00};
           int idx = (millis() / 150) % 4;
           
-          snprintf(info, sizeof(info), "TX: %.2f MHz [%d/4]", multiFreqs[idx], idx + 1);
+          sprintf(info, "TX: %.2f MHz [%d/4]", multiFreqs[idx], idx + 1);
           u8g2.drawStr(3, 58, info);
           
           if (millis() % 150 < 10) { 
@@ -956,7 +956,7 @@ void JAMMINGCC1101() {
         }
         
         case 2: { 
-          snprintf(info, sizeof(info), "Sweep: %.2f MHz", sweepFreq);
+          sprintf(info, "Sweep: %.2f MHz", sweepFreq);
           u8g2.drawStr(3, 58, info);
           
           
@@ -1060,19 +1060,19 @@ void drawBruteForce() {
     
     // Mode selection with visual highlight
     u8g2.drawStr(0, 30, ">");
-    snprintf(line, sizeof(line), "Bits: %s", modeNames[bruteMode]);
+    sprintf(line, "Bits: %s", modeNames[bruteMode]);
     u8g2.drawStr(8, 30, line);
     
-    snprintf(line, sizeof(line), " Proto: %s", protoNames[protoSelect]);
+    sprintf(line, " Proto: %s", protoNames[protoSelect]);
     u8g2.drawStr(8, 40, line);
     
-    snprintf(line, sizeof(line), " Freq: %.2fMHz", currentFreq);
+    sprintf(line, " Freq: %.2fMHz", currentFreq);
     u8g2.drawStr(8, 50, line);
     
     // Estimated time
     uint32_t totalCodes = (bruteMode == 0) ? 256 : (bruteMode == 1 ? 4096 : 65536);
     uint32_t estSeconds = totalCodes / 20; // 20 codes/sec
-    snprintf(line, sizeof(line), "Est: ~%lus (%lum)", estSeconds, estSeconds / 60);
+    sprintf(line, "Est: ~%lus (%lum)", estSeconds, estSeconds / 60);
     u8g2.drawStr(0, 60, line);
     
     drawStatusBar();
@@ -1139,25 +1139,24 @@ void drawBruteForce() {
     char line[40];
     
    
-    snprintf(line, sizeof(line), "Progress: %.1f%%", progress);
+    sprintf(line, "Progress: %.1f%%", progress);
     u8g2.drawStr(0, 28, line);
     
     
-    snprintf(line, sizeof(line), "0x%04X / 0x%04X", currentCode, maxCode);
+    sprintf(line, "0x%04X / 0x%04X", currentCode, maxCode);
     u8g2.drawStr(0, 38, line);
     
     
     if (elapsed < 60) {
-      snprintf(line, sizeof(line), "Time: %lus", elapsed);
+      sprintf(line, "Time: %lus", elapsed);
     } else {
-      snprintf(line, sizeof(line), "Time: %lum %lus", elapsed / 60, elapsed % 60);
+      sprintf(line, "Time: %lum %lus", elapsed / 60, elapsed % 60);
     }
     u8g2.drawStr(0, 48, line);
     
     
-    if (elapsed == 0) elapsed = 1;
-    int codesPerSec = currentCode / elapsed;
-    snprintf(line, sizeof(line), "%dc/s", codesPerSec);
+    int codesPerSec = (elapsed > 0) ? (currentCode / elapsed) : 0;
+    sprintf(line, "%dc/s", codesPerSec);
     u8g2.drawStr(100, 48, line);
     
    
@@ -1239,7 +1238,6 @@ void drawBruteForce() {
         isRunning = false;
         
         unsigned long totalTime = (millis() - startTime) / 1000;
-        if (totalTime == 0) totalTime = 1;
         float avgSpeed = (float)currentCode / (float)totalTime;
         
         Serial.println("\n╔════════════════════════════════════════╗");
@@ -1276,7 +1274,7 @@ void drawBruteForce() {
       Serial.println("╚════════════════════════════════════════╝");
       Serial.printf("  Stopped at:   0x%04X / 0x%04X\n", currentCode, maxCode);
       Serial.printf("  Time Elapsed: %lum %lus\n", totalTime / 60, totalTime % 60);
-      Serial.printf(" Codes Tested:  %lu (%.1f%%)\n", (unsigned long)currentCode, maxCode > 0 ? ((float)currentCode / (float)maxCode) * 100.0 : 0.0);
+      Serial.printf(" Codes Tested:  %lu (%.1f%%)\n", (unsigned long)currentCode, ((float)currentCode / (float)maxCode) * 100.0);
       Serial.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
       
       safeDelay(200);

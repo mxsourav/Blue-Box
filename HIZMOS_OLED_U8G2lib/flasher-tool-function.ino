@@ -32,7 +32,7 @@ void flasherloop(){
     lastBtn = millis();
   }
 
-  if (!digitalRead(BTN_SELECT)) {
+  if (selectPressed()) {
     if (confirmFlash) {
       String filename = files[selectedIndex];
       confirmFlash = false;

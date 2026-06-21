@@ -31,17 +31,40 @@ void scanningwifi() {
     delay(50);
   }
 
-  if (digitalRead(BTN_SELECT) == LOW) {
-    wifi_showInfo = true;
+  if (selectPressed()) {
+     wifi_showInfo = true;
     // If in deauth mode and showing info, set target and launch deauther
     if (deauthMode && wifi_showInfo) {
-      deauthTargetSSID = WiFi.SSID(wifi_selectedIndex);
-      deauthTargetMACStr = WiFi.BSSIDstr(wifi_selectedIndex);
-      deauthTargetChannel = WiFi.channel(wifi_selectedIndex);
+      attackTargetSSID = WiFi.SSID(wifi_selectedIndex);
+      attackTargetMACStr = WiFi.BSSIDstr(wifi_selectedIndex);
+      attackTargetChannel = WiFi.channel(wifi_selectedIndex);
       deauthActive = false;
       runLoop(deautherAttackLoop);
+      // Cleanup: turn off promiscuous, WiFi, and LED after attack exits
       deauthActive = false;
       setColor(0, 0, 0);
+      esp_wifi_set_promiscuous(false);
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      delay(100);
+      Serial.println("[TX-EXIT] Deauther stopped, promiscuous OFF, WiFi OFF");
+      wifi_showInfo = false;
+    }
+    // If in beacon mode and showing info, set target and launch beacon cloning
+    else if (beaconMode && wifi_showInfo) {
+      attackTargetSSID = WiFi.SSID(wifi_selectedIndex);
+      attackTargetMACStr = WiFi.BSSIDstr(wifi_selectedIndex);
+      attackTargetChannel = WiFi.channel(wifi_selectedIndex);
+      beaconActive = false;
+      runLoop(beaconAttackLoop);
+      
+      beaconActive = false;
+      setColor(0, 0, 0);
+      esp_wifi_set_promiscuous(false);
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      delay(100);
+      Serial.println("[TX-EXIT] Beacon clone stopped, promiscuous OFF, WiFi OFF");
       wifi_showInfo = false;
     }
     delay(50);
@@ -65,14 +88,17 @@ void scanningwifi() {
 
     for (int i = start; i < end; i++) {
       int y = (i - start) * 16 + 2;
+      // Fix 7: Cache SSID to avoid creating String temporaries every 30ms
+      String ssidStr = WiFi.SSID(i);
+      const char* ssid = ssidStr.c_str();
       if (i == wifi_selectedIndex) {
         u8g2.setDrawColor(1);
         u8g2.drawRBox(0, y, 128, 16, 4);  // Highlight with rounded rectangle
         u8g2.setDrawColor(0);
-        u8g2.drawStr(6, y + 12, WiFi.SSID(i).c_str());
+        u8g2.drawStr(6, y + 12, ssid);
         u8g2.setDrawColor(1);
       } else {
-        u8g2.drawStr(6, y + 12, WiFi.SSID(i).c_str());
+        u8g2.drawStr(6, y + 12, ssid);
       }
     }
 
@@ -81,27 +107,36 @@ void scanningwifi() {
     u8g2.setFont(u8g2_font_5x8_tr);  // Smaller font to show full MAC address
     u8g2.setDrawColor(1);
 
+    // Fix 7: Use char buffers instead of String concatenation in hot loop
+    char infoBuf[32];
+    
     // Box 1: SSID
     u8g2.drawFrame(0, 0, 128, 13);
-    u8g2.drawStr(4, 9, ("SSID: " + WiFi.SSID(wifi_selectedIndex)).c_str());
+    snprintf(infoBuf, sizeof(infoBuf), "SSID: %s", WiFi.SSID(wifi_selectedIndex).c_str());
+    u8g2.drawStr(4, 9, infoBuf);
 
     // Box 2: RSSI
     u8g2.drawFrame(0, 14, 128, 13);
-    u8g2.drawStr(4, 23, ("RSSI: " + String(WiFi.RSSI(wifi_selectedIndex)) + " dBm").c_str());
+    snprintf(infoBuf, sizeof(infoBuf), "RSSI: %d dBm", WiFi.RSSI(wifi_selectedIndex));
+    u8g2.drawStr(4, 23, infoBuf);
 
     // Box 3: MAC
     u8g2.drawFrame(0, 28, 128, 13);
-    u8g2.drawStr(4, 37, ("MAC: " + WiFi.BSSIDstr(wifi_selectedIndex)).c_str());
+    snprintf(infoBuf, sizeof(infoBuf), "MAC: %s", WiFi.BSSIDstr(wifi_selectedIndex).c_str());
+    u8g2.drawStr(4, 37, infoBuf);
 
     // Box 4: Encryption
     u8g2.drawFrame(0, 42, 128, 13);
-    u8g2.drawStr(4, 51, ("Enc: " + wifi_encryptionType(WiFi.encryptionType(wifi_selectedIndex))).c_str());
+    snprintf(infoBuf, sizeof(infoBuf), "Enc: %s", wifi_encryptionType(WiFi.encryptionType(wifi_selectedIndex)).c_str());
+    u8g2.drawStr(4, 51, infoBuf);
 
     // Box 5: Back hint / Deauth option
     u8g2.drawFrame(0, 56, 128, 8);
     u8g2.setFont(u8g2_font_4x6_tr);
     if (deauthMode) {
       u8g2.drawStr(10, 62, "[SELECT: DEAUTH  BACK: EXIT]");
+    } else if (beaconMode) {
+      u8g2.drawStr(10, 62, "[SELECT: BEACON  BACK: EXIT]");
     } else {
       u8g2.drawStr(38, 62, "[BACK to return]");
     }

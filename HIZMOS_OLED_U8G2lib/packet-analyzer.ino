@@ -39,13 +39,17 @@ SnifferGraph sniffer;
 
 
 void IRAM_ATTR snifferCallback(void *buf, wifi_promiscuous_pkt_type_t type) {
+  wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
+  SnifferPacket sp;
+  sp.type = type;
+  sp.length = pkt->rx_ctrl.sig_len;
 
-  if (type == WIFI_PKT_MGMT || type == WIFI_PKT_DATA || type == WIFI_PKT_CTRL) {
-
-    sniffer.packetCounter++;
-
+  // Use ISR-safe queue send, don't block
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xQueueSendFromISR(snifferPacketQueue, &sp, &xHigherPriorityTaskWoken);
+  if (xHigherPriorityTaskWoken) {
+    portYIELD_FROM_ISR();
   }
-
 }
 
 
@@ -68,27 +72,14 @@ void initDisplay() {
 
 void initSniffer(struct SnifferGraph &g) {
 
+  // Fix 8: Don't use esp_wifi_deinit/init — it can corrupt memory on ESP32-S3
   WiFi.disconnect(true, true);
 
-  esp_wifi_stop();
+  WiFi.mode(WIFI_STA);
 
-  delay(200);
+  delay(100);
 
-  esp_wifi_deinit();
-
-
-
-  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-
-  esp_wifi_init(&cfg);
-
-  esp_wifi_set_storage(WIFI_STORAGE_RAM);
-
-  esp_wifi_set_mode(WIFI_MODE_NULL);
-
-  esp_wifi_start();
-
-
+  esp_wifi_set_promiscuous(false);
 
   esp_wifi_set_channel(g.currentChannel, WIFI_SECOND_CHAN_NONE);
 
@@ -229,3 +220,15 @@ void updateSnifferGraph() {
 }
 
 
+
+// --- WORKER TASK ---
+void snifferWorkerTask(void *pvParameters) {
+  SnifferPacket pkt;
+  while(true) {
+    if(xQueueReceive(snifferPacketQueue, &pkt, portMAX_DELAY) == pdTRUE) {
+      if (pkt.type == WIFI_PKT_MGMT || pkt.type == WIFI_PKT_DATA || pkt.type == WIFI_PKT_CTRL) {
+        sniffer.packetCounter++;
+      }
+    }
+  }
+}

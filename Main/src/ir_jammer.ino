@@ -200,7 +200,7 @@ void handleIRJammer() {
       case 3:
         u8g2.drawStr(8, y, "DENSITY:");
         char densStr[5];
-        snprintf(densStr, sizeof(densStr), "%d", jammerDensity);
+        sprintf(densStr, "%d", jammerDensity);
         u8g2.drawStr(70, y, densStr);
         u8g2.drawFrame(90, y - 8, 30, 7);
         u8g2.drawBox(90, y - 8, jammerDensity * 3, 7);
@@ -215,9 +215,9 @@ void handleIRJammer() {
   char stats[40];
   if (jammerActive) {
     unsigned long activeSec = (now - jammerStartTime) / 1000;
-    snprintf(stats, sizeof(stats), "Jams: %lu   Time: %02lu:%02lu", jammerSignalCount, activeSec / 60, activeSec % 60);
+    sprintf(stats, "Jams: %lu   Time: %02lu:%02lu", jammerSignalCount, activeSec / 60, activeSec % 60);
   } else {
-    snprintf(stats, sizeof(stats), "Jams: %lu   Time: 00:00", jammerSignalCount);
+    sprintf(stats, "Jams: %lu   Time: 00:00", jammerSignalCount);
   }
   u8g2.drawStr(8, 62, stats);
 

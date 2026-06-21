@@ -595,4 +595,35 @@ void handlemainmenu() {
   }
 }
 
+void handlewifimenu() {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_7x14_tf);
+  u8g2.drawStr(10, 20, "Wi-Fi Tools");
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.drawStr(10, 40, "Not Implemented");
+  u8g2.drawStr(10, 52, "in hardware yet");
+  u8g2.sendBuffer();
+  delay(150);
+  while (digitalRead(BTN_BACK) == HIGH && digitalRead(BTN_SELECT) == HIGH) {
+    delay(10);
+  }
+  delay(150);
+}
+
+void handleblemenu() {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_7x14_tf);
+  u8g2.drawStr(10, 20, "BLE Tools");
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.drawStr(10, 40, "Not Implemented");
+  u8g2.drawStr(10, 52, "in hardware yet");
+  u8g2.sendBuffer();
+  delay(150);
+  while (digitalRead(BTN_BACK) == HIGH && digitalRead(BTN_SELECT) == HIGH) {
+    delay(10);
+  }
+  delay(150);
+}
+
+
 

@@ -29,7 +29,7 @@ class blescanner_AdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       String mData = String(advertisedDevice.getManufacturerData().c_str());
       if (mData.length() >= 2) {
         char buffer[10];
-        snprintf(buffer, sizeof(buffer), "0x%02X%02X", (uint8_t)mData[1], (uint8_t)mData[0]);
+        sprintf(buffer, "0x%02X%02X", (uint8_t)mData[1], (uint8_t)mData[0]);
         dev.manufacturer = String(buffer);
       } else {
         dev.manufacturer = "unknown";
@@ -45,9 +45,7 @@ class blescanner_AdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       dev.deviceType = "unknown";
     }
 
-    if (blescanner_devices.size() < 100) { // Cap to prevent OOM
-      blescanner_devices.push_back(dev);
-    }
+    blescanner_devices.push_back(dev);
   }
 };
 
@@ -63,7 +61,7 @@ void blescanner_drawMenu() {
   } else {
    
     char counter[20];
-    snprintf(counter, sizeof(counter), "%d/%d devices", blescanner_selectedIndex + 1, (int)blescanner_devices.size());
+    sprintf(counter, "%d/%d devices", blescanner_selectedIndex + 1, (int)blescanner_devices.size());
     u8g2.setFont(u8g2_font_5x8_tr);
     u8g2.drawStr(0, 8, counter);
     
@@ -79,15 +77,13 @@ void blescanner_drawMenu() {
       }
       
     
-      char dispBuf[32];
-      const String& devName = blescanner_devices[idx].name;
-      if (devName.length() > 14) {
-        snprintf(dispBuf, sizeof(dispBuf), "%.14s.. (%d)", devName.c_str(), blescanner_devices[idx].rssi);
-      } else {
-        snprintf(dispBuf, sizeof(dispBuf), "%s (%d)", devName.c_str(), blescanner_devices[idx].rssi);
+      String displayText = blescanner_devices[idx].name;
+      if (displayText.length() > 14) {
+        displayText = displayText.substring(0, 14) + "..";
       }
+      displayText += " (" + String(blescanner_devices[idx].rssi) + ")";
       
-      u8g2.drawStr(2, y, dispBuf);
+      u8g2.drawStr(2, y, displayText.c_str());
       
       if (i == 0) {
         u8g2.setDrawColor(1);
@@ -105,59 +101,61 @@ void blescanner_drawDeviceDetails(const blescanner_Device& dev) {
   u8g2.setFont(u8g2_font_5x7_tr);
 
   
-  char detBuf[32];
-  if (dev.name.length() > 21) {
-    u8g2.drawStr(0, 19, dev.name.substring(0, 21).c_str());
-    u8g2.drawStr(0, 27, dev.name.substring(21).c_str());
+  String name = dev.name;
+  if (name.length() > 21) {
+    u8g2.drawStr(0, 19, name.substring(0, 21).c_str());
+    u8g2.drawStr(0, 27, name.substring(21).c_str());
   } else {
-    snprintf(detBuf, sizeof(detBuf), "Name: %s", dev.name.c_str());
-    u8g2.drawStr(0, 19, detBuf);
+    String nameStr = "Name: " + name;
+    u8g2.drawStr(0, 19, nameStr.c_str());
   }
 
   
-  snprintf(detBuf, sizeof(detBuf), "MAC: %s", dev.address.substring(0, 12).c_str());
-  u8g2.drawStr(0, 35, detBuf);
-  snprintf(detBuf, sizeof(detBuf), "     %s", dev.address.substring(12).c_str());
-  u8g2.drawStr(0, 43, detBuf);
+  String macLine1 = "MAC: " + dev.address.substring(0, 12);
+  String macLine2 = "     " + dev.address.substring(12);
+  u8g2.drawStr(0, 35, macLine1.c_str());
+  u8g2.drawStr(0, 43, macLine2.c_str());
 
   char rssiStr[25];
-  snprintf(rssiStr, sizeof(rssiStr), "RSSI: %d dBm", dev.rssi);
+  sprintf(rssiStr, "RSSI: %d dBm", dev.rssi);
   u8g2.drawStr(0, 51, rssiStr);
 
  
-  if (dev.deviceType.length() > 18) {
-    snprintf(detBuf, sizeof(detBuf), "Type: %.18s...", dev.deviceType.c_str());
-  } else {
-    snprintf(detBuf, sizeof(detBuf), "Type: %s", dev.deviceType.c_str());
+  String deviceType = dev.deviceType;
+  if (deviceType.length() > 21) {
+    deviceType = deviceType.substring(0, 18) + "...";
   }
-  u8g2.drawStr(0, 59, detBuf);
+  String typeStr = "Type: " + deviceType;
+  u8g2.drawStr(0, 59, typeStr.c_str());
 
   u8g2.sendBuffer();
 }
 
 void blescanner_scan() {
   blescanner_devices.clear();
+  blescanner_devices.shrink_to_fit();
   
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_7x14_tr);
   u8g2.drawStr(10, 30, "Scanning BLE...");
   u8g2.sendBuffer();
   
-  static bool bleInitialized = false;
-  if (!bleInitialized) {
-    BLEDevice::init("");
-    bleInitialized = true;
-  }
-
+  BLEDevice::init("");
   blescanner_pBLEScan = BLEDevice::getScan();
-  static blescanner_AdvertisedDeviceCallbacks* pCallbacks = new blescanner_AdvertisedDeviceCallbacks();
-  blescanner_pBLEScan->setAdvertisedDeviceCallbacks(pCallbacks, false);
+  static blescanner_AdvertisedDeviceCallbacks cb;
+  blescanner_pBLEScan->setAdvertisedDeviceCallbacks(&cb, false);
   blescanner_pBLEScan->setActiveScan(true);
   blescanner_pBLEScan->setInterval(100);
   blescanner_pBLEScan->setWindow(99);
   blescanner_pBLEScan->start(5, false);
   
-  // إزالة التكرارات
+  // Free BLE scan results from the BLE stack
+  blescanner_pBLEScan->clearResults();
+  
+  // Deinit BLE to free ~60KB heap (critical for subsequent WiFi operations)
+  BLEDevice::deinit(false);
+  
+  // Remove duplicates
   std::vector<blescanner_Device> uniqueDevices;
   for (size_t i = 0; i < blescanner_devices.size(); i++) {
     bool exists = false;
@@ -188,7 +186,7 @@ void blescanner() {
       lastPress = millis();
     } else if (blescanner_isPressed(BTN_SELECT) && !blescanner_devices.empty()) {
       blescanner_drawDeviceDetails(blescanner_devices[blescanner_selectedIndex]);
-      delay(1500);
+      delay(4000);
       blescanner_drawMenu();
       lastPress = millis();
     } else if (blescanner_isPressed(BTN_BACK)) {

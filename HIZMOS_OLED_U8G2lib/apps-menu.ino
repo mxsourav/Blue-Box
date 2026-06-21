@@ -56,7 +56,7 @@ void handleappsmenu() {
 
 
 
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
 
     switch (selectedItem) {
 
@@ -102,7 +102,7 @@ void handleappsmenu() {
 
       case 4:
 
-      if (!SD.begin(SD_CS, SD_SPI)) {
+      if (!false) {
 
     u8g2.clearBuffer();  
 

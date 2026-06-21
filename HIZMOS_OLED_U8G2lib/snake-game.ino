@@ -74,7 +74,7 @@ void startGame() {
 
 void snakeLoop() {
   if (!gameStarted) {
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       delay(200);
       startGame();
     }
@@ -83,7 +83,7 @@ void snakeLoop() {
 
   if (gameOver) {
     drawGameOverScreen();
-    if (digitalRead(BTN_SELECT) == LOW) {
+    if (selectPressed()) {
       delay(300);
       startGame();
     } else if (digitalRead(BTN_BACK) == LOW) {

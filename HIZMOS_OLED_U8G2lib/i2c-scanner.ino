@@ -22,7 +22,7 @@ void i2cscanner() {
 
   i2cDrawMenu();
 
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
     i2cShowDeviceInfo(i2cFoundAddresses[i2cSelectedIndex]);
     delay(500);
   }

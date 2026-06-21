@@ -73,7 +73,6 @@ void readSDfiles() {
     }
     entry.close();
   }
-  root.close();
 }
 
 void drawMenu() {
@@ -134,8 +133,6 @@ void flashBinary(String path) {
     u8g2.clearBuffer();
     u8g2.drawStr(0, 30, "Update.begin fail");
     u8g2.sendBuffer();
-    updateBin.close();
-    delay(2000);
     return;
   }
 

@@ -110,8 +110,7 @@ void handleappsmenu() {
 
     u8g2.sendBuffer();
 
-    delay(2000);
-    return;  // Go back to menu instead of freezing
+    while (1);
 
   }
 

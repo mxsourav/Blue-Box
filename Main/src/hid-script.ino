@@ -158,16 +158,15 @@ void hidRunScript(const char* path) {
 
     } else if (upperLine.startsWith("REPEAT ")) {
 
-      int repeatCount = min(upperLine.substring(7).toInt(), (long)100);
+      int repeatCount = upperLine.substring(7).toInt();
 
-      if (hidLastCommand.length() > 0 && hidLastCommand.startsWith("STRING ")) {
-        for (int i = 0; i < repeatCount; i++) {
-          Keyboard.print(hidLastCommand.substring(7));
-          delay(hidDefaultDelay);
-        }
+      for (int i = 0; i < repeatCount; i++) {
+
+        hidRunScript(path);
+
       }
 
-      continue;
+      break;
 
     } else if (upperLine.startsWith("PRINT ")) {
 
@@ -315,7 +314,7 @@ if (!SD.begin(SD_CS, SD_SPI)) {
 
     String name = entry.name();
 
-    if (!entry.isDirectory() && name.endsWith(".duck") && name.indexOf(' ') == -1 && hidFileCount < 20) {
+    if (!entry.isDirectory() && name.endsWith(".duck") && name.indexOf(' ') == -1) {
 
       hidFileList[hidFileCount++] = name;
 
@@ -324,7 +323,6 @@ if (!SD.begin(SD_CS, SD_SPI)) {
     entry.close();
 
   }
-  root.close();
 
 
 
@@ -339,15 +337,6 @@ if (!SD.begin(SD_CS, SD_SPI)) {
 
 
 void hidscriptmenu() {
-
-  if (hidFileCount == 0) {
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.drawStr(10, 30, "No .duck files found");
-    u8g2.sendBuffer();
-    for(int i=0; i<20; i++) hidFileList[i] = "";
-    return;
-  }
 
   hidDrawMenu();
 
@@ -375,7 +364,6 @@ void hidscriptmenu() {
 
   }
 
-  for(int i=0; i<20; i++) hidFileList[i] = "";
 }
 
 

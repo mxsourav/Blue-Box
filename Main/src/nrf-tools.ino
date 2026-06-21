@@ -78,13 +78,17 @@ void handlenrftoolsmenu() {
 
 
 
-  // radio2 not connected — skipped
-  // radio2.setPALevel(RF24_PA_MAX);
-  // radio2.setDataRate(RF24_2MBPS);
-  // radio2.setAutoAck(false);
+  radio2.setPALevel(RF24_PA_MAX);
+
+  radio2.setDataRate(RF24_2MBPS);
+
+  radio2.setAutoAck(false);
+
+
 
   radio1.startListening();
-  // radio2.startListening(); // radio2 not connected
+
+  radio2.startListening();
 
      runLoop(nrfscanner);
 
@@ -106,10 +110,11 @@ void handlenrftoolsmenu() {
 
 
 
-  // radio2 not connected — skipped
-  // radio2.setPALevel(RF24_PA_MAX);
-  // radio2.setDataRate(RF24_2MBPS);
-  // radio2.setAutoAck(false);
+  radio2.setPALevel(RF24_PA_MAX);
+
+  radio2.setDataRate(RF24_2MBPS);
+
+  radio2.setAutoAck(false);
 
 
 

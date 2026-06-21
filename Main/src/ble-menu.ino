@@ -66,6 +66,9 @@ static const unsigned char image_file_search_bits[] U8X8_PROGMEM = {0x80,0x0f,0x
       case 1:
       mouse_ble.begin();
       runLoop(blemouse);
+      // Fix 9: Cleanup BLE after mouse exits to free ~60KB heap
+      BLEDevice::deinit(false);
+      delay(100);
        
        break;
       case 2:

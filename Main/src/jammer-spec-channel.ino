@@ -25,9 +25,9 @@ void updateRadios() {
   rf24_datarate_e rates[] = {RF24_250KBPS, RF24_1MBPS, RF24_2MBPS};
 
   radio1.setPALevel(paLevels[nrfspesPaLevelIndex]);
-  // radio2.setPALevel(paLevels[nrfspesPaLevelIndex]); // radio2 not connected
+  radio2.setPALevel(paLevels[nrfspesPaLevelIndex]);
   radio1.setDataRate(rates[nrfspesDataRateIndex]);
-  // radio2.setDataRate(rates[nrfspesDataRateIndex]); // radio2 not connected
+  radio2.setDataRate(rates[nrfspesDataRateIndex]);
 }
 
 void jamChannelNow(int channel) {
@@ -43,8 +43,8 @@ void jamChannelNow(int channel) {
 char chanStr[5];
 char freqStr[10];
 
-snprintf(chanStr, sizeof(chanStr), "%d", channel);
-snprintf(freqStr, sizeof(freqStr), "%d", 2400 + channel);
+sprintf(chanStr, "%d", channel);
+sprintf(freqStr, "%d", 2400 + channel);
 
 u8g2.clearBuffer();
 u8g2.setFontMode(1);
@@ -69,12 +69,10 @@ u8g2.sendBuffer();
     radio1.stopListening();
     radio1.write(d1, sizeof(d1));
 
-    // radio2 not connected — skipped
-    // radio2.setChannel(channel);
-    // radio2.stopListening();
-    // radio2.write(d2, sizeof(d2));
+    radio2.setChannel(channel);
+    radio2.stopListening();
+    radio2.write(d2, sizeof(d2));
     delayMicroseconds(100);
-    delay(1); // Yield to FreeRTOS to prevent WDT reset
   }
 
   u8g2.clearBuffer();

@@ -538,13 +538,9 @@ void handleMenuAction(int index) {
       break;
     case 4:
         runLoop(handlewifimenu);
-        // Turn off WiFi on exit to save power
-        WiFi.mode(WIFI_OFF);
       break;
     case 5:
       runLoop(handleblemenu);
-      // Deinit BLE on exit to reclaim memory and radio
-      BLEDevice::deinit(true);
       break;
     case 6:
        filesetup();

@@ -63,16 +63,16 @@
 #include <vector>
 #include "USB.h"
 #include "USBHIDKeyboard.h"
-#include <BleMouse.h>
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEScan.h>
-#include <WiFi.h>
+//#include <BleMouse.h>
+//#include <BLEDevice.h>
+//#include <BLEUtils.h>
+//#include <BLEScan.h>
+//#include <WiFi.h>
 #include <IRremote.h>
 #include <Wire.h>
 
 
-#include <esp_wifi.h>
+//#include <esp_wifi.h>
 #include "esp_heap_caps.h"
 #include "spi_flash_mmap.h"
 #include "esp_chip_info.h"
@@ -81,12 +81,12 @@
 
 // Forward declarations to prevent compiler scope errors
 void loading();
-void scanningwifi();
-void deautherAttackLoop();
+//void scanningwifi();
+//void deautherAttackLoop();
 void runTVBGone();
 void resetTVBGone();
 uint16_t cyclesPerPulse(uint8_t timer_val);
-String wifi_encryptionType(wifi_auth_mode_t encryption);
+//String wifi_encryptionType(wifi_auth_mode_t encryption);
 void checksysdevices();
 void datausage();
 void updateTimer();
@@ -112,12 +112,13 @@ void handlesuniversalremotemenu();
 
 USBHIDKeyboard Keyboard;
 
-BleMouse mouse_ble("hizmos", "hizmos", 100);
+//BleMouse mouse_ble("hizmos", "hizmos", 100);
 
 
 
 
 
+/*
 struct blescanner_Device {
   String name;
   String address;
@@ -129,6 +130,7 @@ struct blescanner_Device {
 std::vector<blescanner_Device> blescanner_devices;
 int blescanner_selectedIndex = 0;
 BLEScan* blescanner_pBLEScan;
+*/
 
 
 
@@ -138,22 +140,22 @@ BLEScan* blescanner_pBLEScan;
 
 
 
-int wifi_selectedIndex = 0;
-int wifi_networkCount = 0;
-bool wifi_showInfo = false;
+//int wifi_selectedIndex = 0;
+//int wifi_networkCount = 0;
+//bool wifi_showInfo = false;
 
 // ===== WiFi Deauther State =====
-bool deauthMode = false;
-bool deauthActive = false;
-unsigned long deauthFrameCount = 0;
-unsigned long deauthFrameCounterThisSecond = 0;
-unsigned long deauthFps = 0;
-unsigned long lastDeauthSendTime = 0;
-unsigned long lastFpsUpdateTime = 0;
-String deauthTargetSSID = "";
-String deauthTargetMACStr = "";
-uint8_t deauthTargetMAC[6] = {0};
-uint8_t deauthTargetChannel = 1;
+// bool deauthMode = false;
+// bool deauthActive = false;
+// unsigned long deauthFrameCount = 0;
+// unsigned long deauthFrameCounterThisSecond = 0;
+// unsigned long deauthFps = 0;
+// unsigned long lastDeauthSendTime = 0;
+// unsigned long lastFpsUpdateTime = 0;
+// String deauthTargetSSID = "";
+// String deauthTargetMACStr = "";
+// uint8_t deauthTargetMAC[6] = {0};
+// uint8_t deauthTargetChannel = 1;
 
 /*
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(

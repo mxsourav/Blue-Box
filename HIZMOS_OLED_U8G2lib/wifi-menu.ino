@@ -1,5 +1,5 @@
 void handlewifimenu() {
-  const char* menuItems[] = {"SCAN WIFI", "PACKET ANALYZER", "BEACON", "CAPTIVE PORTAL", "DEAUTH DETECTOR", "DEAUTHER"};
+  const char* menuItems[] = {"SCAN WIFI", "PACKET ANALYZER", "BEACON", "CAPTIVE PORTAL", "DEAUTH DETECTOR", "DEAUTHER", "BEACON SPAM"};
   const int menuLength = sizeof(menuItems) / sizeof(menuItems[0]);
   const int visibleItems = 3;
 
@@ -28,7 +28,7 @@ void handlewifimenu() {
     lastInputTime = millis(); 
   }
 
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
     switch (selectedItem) {
       case 0:
 
@@ -65,14 +65,45 @@ static const unsigned char image_wifi_50_bits[] U8X8_PROGMEM = {0x80,0x0f,0x00,0
        wifi_networkCount = WiFi.scanNetworks();
 
       runLoop(scanningwifi);
+      // Fix 3: Clean up WiFi scan results to prevent memory leak
+      WiFi.scanDelete();
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      delay(100);
        
         break;
       case 1:
        setupSnifferGraph(); 
        runLoop(updateSnifferGraph);
+       // Fix 5: Cleanup promiscuous mode after sniffer exits
+       esp_wifi_set_promiscuous(false);
+       esp_wifi_set_promiscuous_rx_cb(NULL);
+       WiFi.disconnect(true);
+       WiFi.mode(WIFI_OFF);
+       delay(100);
        break;
       case 2:
-       runLoop(loading);
+        beaconMode = true;
+        {
+          // Show scanning screen
+          u8g2.clearBuffer();
+          u8g2.setFont(u8g2_font_t0_13_tr);
+          u8g2.drawStr(32, 15, "scanning");
+          u8g2.drawStr(44, 32, "wifi ");
+          u8g2.drawStr(33, 49, "networks");
+          u8g2.sendBuffer();
+          WiFi.mode(WIFI_STA);
+          WiFi.disconnect();
+          delay(100);
+          wifi_networkCount = WiFi.scanNetworks();
+          runLoop(scanningwifi);
+          
+          WiFi.scanDelete();
+          WiFi.disconnect(true);
+          WiFi.mode(WIFI_OFF);
+          delay(100);
+        }
+        beaconMode = false;
         break;
       case 3: 
       runLoop(loading);
@@ -95,8 +126,16 @@ static const unsigned char image_wifi_50_bits[] U8X8_PROGMEM = {0x80,0x0f,0x00,0
           delay(100);
           wifi_networkCount = WiFi.scanNetworks();
           runLoop(scanningwifi);
+          // Fix 3: Clean up after deauth scan too
+          WiFi.scanDelete();
+          WiFi.disconnect(true);
+          WiFi.mode(WIFI_OFF);
+          delay(100);
         }
         deauthMode = false;
+        break;
+      case 6: // BEACON SPAM
+        runLoop(beaconSpamSetupUI);
         break;
     }
     lastInputTime = millis(); 
@@ -136,5 +175,106 @@ static const unsigned char image_wifi_50_bits[] U8X8_PROGMEM = {0x80,0x0f,0x00,0
   }
 
   u8g2.sendBuffer();
+}
+
+void beaconSpamRunningUI() {
+  unsigned long now = millis();
+  if (now - lastBsFpsUpdateTime >= 1000) {
+    bsFps = bsSuccessCounterThisSecond;
+    bsSuccessCounterThisSecond = 0;
+    lastBsFpsUpdateTime = now;
+  }
   
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.drawFrame(0, 0, 128, 14);
+  u8g2.drawStr(4, 10, "BEACON SPAM ACTIVE");
+  
+  u8g2.setFont(u8g2_font_5x8_tr);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "Mode: %d | APs: %d", bsMode, bsAPCount);
+  u8g2.drawStr(4, 25, buf);
+  
+  snprintf(buf, sizeof(buf), "Chan: %d | Seq: %d", bsCurrentChannel, bsSequence);
+  u8g2.drawStr(4, 35, buf);
+  
+  // Animation
+  static int animState = 0;
+  static unsigned long lastAnimTime = 0;
+  if (now - lastAnimTime > 250) {
+    animState = (animState + 1) % 4;
+    lastAnimTime = now;
+  }
+  char animBuf[16] = "SPAMMING";
+  for (int i = 0; i < animState; i++) animBuf[8 + i] = '.';
+  animBuf[8 + animState] = '\0';
+  u8g2.drawStr(4, 45, animBuf);
+  
+  snprintf(buf, sizeof(buf), "Tx:%lu Ok:%lu %lu/s", bsAttemptCount, bsSuccessCount, bsFps);
+  u8g2.drawStr(4, 55, buf);
+  
+  u8g2.sendBuffer();
+}
+
+void beaconSpamSetupUI() {
+  static const char* bsModes[] = {"Common Names", "Random Garbage", "Rick Roll", "Troll Names"};
+  static int sel = 0;
+  
+  if (digitalRead(BTN_UP) == LOW) {
+    sel--; if(sel < 0) sel = 3;
+    delay(150); // debounce
+  }
+  if (digitalRead(BTN_DOWN) == LOW) {
+    sel++; if(sel > 3) sel = 0;
+    delay(150); // debounce
+  }
+  
+  if (selectPressed()) {
+    bsMode = sel;
+    // Set to STA mode + Promiscuous to allow beacon transmission
+    WiFi.disconnect(true, true);
+    WiFi.mode(WIFI_STA);
+    delay(100);
+    esp_wifi_set_promiscuous(true);
+    
+    // Generate pool
+    generateSpamAPs(bsMode, bsAPCount);
+    
+    // Send Start command
+    AttackCommand startCmd; startCmd.action = 1;
+    xQueueSend(beaconSpamQueue, &startCmd, portMAX_DELAY);
+    
+    // Wait for button release
+    while(digitalRead(BTN_SELECT) == LOW) delay(10);
+    
+    // Launch running UI (blocks until BACK is pressed)
+    runLoop(beaconSpamRunningUI);
+    
+    // Once returned, send Stop command
+    AttackCommand stopCmd; stopCmd.action = 0;
+    xQueueSend(beaconSpamQueue, &stopCmd, portMAX_DELAY);
+    
+    // Wait for BACK button release
+    while(digitalRead(BTN_BACK) == LOW) delay(10);
+    
+    // Restore WiFi state
+    esp_wifi_set_promiscuous(false);
+    WiFi.mode(WIFI_STA);
+    delay(150);
+  }
+  
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_5x8_tr);
+  u8g2.drawStr(0, 10, "Select Beacon Mode:");
+  for (int i=0; i<4; i++) {
+    if (i == sel) {
+      u8g2.drawBox(0, 15 + (i*10), 128, 10);
+      u8g2.setDrawColor(0);
+      u8g2.drawStr(5, 23 + (i*10), bsModes[i]);
+      u8g2.setDrawColor(1);
+    } else {
+      u8g2.drawStr(5, 23 + (i*10), bsModes[i]);
+    }
+  }
+  u8g2.sendBuffer();
 }

@@ -36,7 +36,7 @@ void blemouse() {
     } else if (digitalRead(BTN_RIGHT) == LOW) {
       mouse_ble.move(50, 0);
       mouse_lastPressed = "RIGHT";
-    } else if (digitalRead(BTN_SELECT) == LOW) {
+    } else if (selectPressed()) {
       mouse_ble.click(MOUSE_LEFT);
       mouse_lastPressed = "SELECT";
     } else if (digitalRead(BTN_BACK) == LOW) {

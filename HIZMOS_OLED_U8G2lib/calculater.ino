@@ -32,7 +32,7 @@ void claculaterloop(){
     moveCursor(0, 1);
     delay(200);
   }
-  if (digitalRead(BTN_SELECT) == LOW) {
+  if (selectPressed()) {
     handleSelect();
     delay(200);
   }

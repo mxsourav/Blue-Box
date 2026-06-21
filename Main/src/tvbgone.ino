@@ -100,10 +100,7 @@ void runTVBGone() {
       tvbCodePtr = 0;
 
       // Build raw data array
-      // Cap numpairs to prevent stack overflow from corrupted data
-      #define TVB_MAX_PAIRS 128
-      if (numpairs > TVB_MAX_PAIRS) numpairs = TVB_MAX_PAIRS;
-      static uint16_t rawData[TVB_MAX_PAIRS * 2];
+      uint16_t rawData[numpairs * 2];
       for (uint8_t k = 0; k < numpairs; k++) {
         uint8_t ti = tvb_read_bits(powerCode, bitcompression);
         rawData[k * 2] = powerCode->times[ti * 2];
@@ -125,7 +122,7 @@ void runTVBGone() {
       u8g2.drawStr(0, 26, (tvbRegion == REGION_NA) ? "Region: NORTH AMERICA" : "Region: EUROPE / EU");
       
       char codeStats[32];
-      snprintf(codeStats, sizeof(codeStats), "Code: %d / %d", tvbCurrentCode + 1, tvbTotalCodes);
+      sprintf(codeStats, "Code: %d / %d", tvbCurrentCode + 1, tvbTotalCodes);
       u8g2.drawStr(0, 40, codeStats);
 
       // Progress bar
