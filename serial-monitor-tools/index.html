@@ -16,6 +16,16 @@
             padding: 20px;
         }
         h1 { color: #fff; margin-bottom: 10px; }
+        .hint {
+            width: 80%;
+            color: #ffd966;
+            background: #221f12;
+            border: 1px solid #665c2a;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 14px;
+            line-height: 1.4;
+        }
         #terminal { 
             width: 80%; 
             height: 400px; 
@@ -72,6 +82,7 @@
 </head>
 <body>
     <h1>Blue Box Web Serial Panel</h1>
+    <div class="hint">Connect USB to the ESP32-S3 COM Type-C port. Do not use the native USB-C port for this serial monitor.</div>
     <button class="connect-btn" id="connectBtn">Connect to ESP32 (COM Port)</button>
     
     <div id="terminal"></div>

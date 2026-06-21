@@ -10,7 +10,21 @@ The project is under construction. Public releases will focus on safe diagnostic
 - Maintained by `mxsourav`
 - Firmware, hardware notes, and tool files are being disclosed as the project grows
 - WiFi deauther, beacon spam, WiFi scanner, packet analyzer, and WiFi menu tools implemented
+- Serial monitor tools include virtual D-pad buttons for remote menu control
 - Local build output, credentials, and private test logs are intentionally excluded
+
+## What's New in v2.0.0
+
+- Added WiFi deauther tooling for authorized lab testing
+- Added beacon spam tooling
+- Added WiFi scanner and packet analyzer improvements
+- Added WiFi menu integration for the new wireless tools
+- Added web serial monitor at `serial-monitor-tools/index.html`
+- Added Python serial monitor at `serial-monitor-tools/serial_panel.py`
+- Added virtual D-pad controls: Up, Down, Left, Right, Select, and Back
+- Added precompiled firmware binary in `pre-compiled bin/`
+
+Serial monitor note: connect the USB cable to the ESP32-S3 COM Type-C port. Do not use the native USB-C port for the serial monitor tools.
 
 ## Current Scope
 
@@ -54,11 +68,13 @@ Blue-Box/
 │   │   └── supporting firmware modules
 │   ├── src_original/
 │   │   └── original source snapshot
-│   ├── index.html
-│   ├── serial_panel.py
 │   └── patch.py
 ├── pre-compiled bin/
 │   └── firmware binaries and build references
+├── serial-monitor-tools/
+│   ├── README.md
+│   ├── index.html
+│   └── serial_panel.py
 ├── tools/
 │   └── README.md
 ├── pinout_connections.xlsx

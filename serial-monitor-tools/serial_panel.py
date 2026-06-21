@@ -15,6 +15,17 @@ class SerialPanel:
         # Set up a dark hacker-style theme
         self.root.configure(bg='#1e1e1e')
 
+        self.port_note = tk.Label(
+            root,
+            text="Use the ESP32-S3 COM Type-C port. Do not use the native USB-C port for this serial monitor.",
+            bg='#1e1e1e',
+            fg='#ffd966',
+            font=("Arial", 10, "bold"),
+            wraplength=660,
+            justify=tk.LEFT,
+        )
+        self.port_note.pack(padx=10, pady=(10, 0), fill=tk.X)
+
         # Read-only text area for incoming logs
         self.text_area = scrolledtext.ScrolledText(
             root, wrap=tk.WORD, state='disabled', 
