@@ -1,5 +1,5 @@
 ================================================================================
-                    HIZMOS FIRMWARE — PIN DIAGRAM LOG
+                    BLUE BOX FIRMWARE PIN DIAGRAM LOG
                     ESP32-S3 Custom Wiring (Gaar Fata Build)
 ================================================================================
 

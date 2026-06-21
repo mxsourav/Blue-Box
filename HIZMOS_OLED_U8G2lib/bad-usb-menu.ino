@@ -133,7 +133,7 @@ void handlebadusbmenu() {
   Keyboard.println("╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚══════╝");
   Keyboard.println("");
   Keyboard.println("         — CREATED BY HIKTRON —");
-  Keyboard.println("- HIZMOS IS A FLIPPER ZERO REPLICA 'OPEN SOURCE' -");
+  Keyboard.println("- BLUE BOX IS AN OPEN SOURCE PORTABLE SECURITY TOOL -");
   Keyboard.println("");
   Keyboard.println(".......... DEVELOPERS ..........");
   Keyboard.println("{ YOUSSEF I HIKAL && OMAR KAMEL }");

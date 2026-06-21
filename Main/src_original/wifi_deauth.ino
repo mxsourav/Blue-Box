@@ -5,7 +5,7 @@
 // WITH REAL SUCCESS/FAIL PACKET TRACKING
 // ============================================================
 
-// ===== Shared WiFi types and globals are now declared in HIZMOS_OLED_U8G2lib.ino =====
+// ===== Shared WiFi types and globals are declared in the main firmware file =====
 
 // ===== Default deauth frame template (from Bruce/Marauder) =====
 const uint8_t deauth_frame_default[] = {

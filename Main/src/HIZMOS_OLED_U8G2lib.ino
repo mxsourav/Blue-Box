@@ -10,7 +10,7 @@
 
               — CREATED BY HIKTRON —
 
-   - HIZMOS IS A FLIPPER ZERO REPLICA 'OPEN SOURCE' -
+   - BLUE BOX IS AN OPEN SOURCE PORTABLE SECURITY TOOL -
               
              ......... DEVELOPERS ........
             {YOUSSEF I HIKAL && OMAR KAMEL} 
@@ -128,7 +128,7 @@ void handlesuniversalremotemenu();
 
 USBHIDKeyboard Keyboard;
 
-BleMouse mouse_ble("hizmos", "hizmos", 100);
+BleMouse mouse_ble("Blue Box", "Blue Box", 100);
 
 
 
@@ -1075,7 +1075,7 @@ void playGlitchAnimation(const uint8_t* baseImage, unsigned long durationMs) {
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("--- HIZMOS BOOT START ---");
+  Serial.println("--- BLUE BOX BOOT START ---");
 
   // --- INDIA REGION RF COMPLIANCE ---
   Serial.println("Configuring India WiFi Region (IN, Channels 1-13)...");
@@ -1243,7 +1243,7 @@ void setup() {
   Serial.println("Activating SD card...");
   activateSD();
   
-  Serial.println("--- HIZMOS BOOT SUCCESSFUL ---");
+  Serial.println("--- BLUE BOX BOOT SUCCESSFUL ---");
 }
 
 void loop() {

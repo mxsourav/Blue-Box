@@ -8,8 +8,9 @@ The project is under construction. Public releases will focus on safe diagnostic
 
 - Under construction
 - Maintained by `mxsourav`
-- Public-safe materials only in this repository
-- Private notes, logs, local builds, and sensitive operational files are intentionally excluded
+- Firmware, hardware notes, and tool files are being disclosed as the project grows
+- WiFi deauther, beacon spam, WiFi scanner, packet analyzer, and WiFi menu tools implemented
+- Local build output, credentials, and private test logs are intentionally excluded
 
 ## Current Scope
 
@@ -25,13 +26,42 @@ Blue Box is being shaped as a compact embedded toolkit for:
 
 ```text
 Blue-Box/
+├── ButtonDiag/
+│   └── button diagnostic firmware
+├── docs/
+│   └── build notes, logs, pin records, and version notes
 ├── firmware/
 │   └── README.md
 ├── hardware/
 │   └── README.md
+├── HIZMOS_OLED_U8G2lib/
+│   ├── HIZMOS_OLED_U8G2lib.ino
+│   ├── beacon_spam.ino
+│   ├── wifi-menu.ino
+│   ├── wifi-scanning.ino
+│   ├── wifi_deauther.ino
+│   └── supporting firmware modules
+├── Main/
+│   ├── platformio.ini
+│   ├── boards/
+│   │   └── custom_esp32s3_n16.json
+│   ├── src/
+│   │   ├── HIZMOS_OLED_U8G2lib.ino
+│   │   ├── beacon_spam.ino
+│   │   ├── wifi-menu.ino
+│   │   ├── wifi-scanning.ino
+│   │   ├── wifi_deauther.ino
+│   │   └── supporting firmware modules
+│   ├── src_original/
+│   │   └── original source snapshot
+│   ├── index.html
+│   ├── serial_panel.py
+│   └── patch.py
+├── pre-compiled bin/
+│   └── firmware binaries and build references
 ├── tools/
 │   └── README.md
-├── private/              # ignored locally; not published
+├── pinout_connections.xlsx
 ├── SECURITY.md
 ├── .gitignore
 └── README.md
@@ -39,7 +69,7 @@ Blue-Box/
 
 ## Notes
 
-This repository is intentionally minimal while the project is being cleaned up for a public release. Anything that belongs in logs, private documentation, local build output, credentials, or sensitive test material stays outside Git.
+This repository now includes the public firmware source, hardware notes, and supporting tool files needed to follow the Blue Box development work. Local build output, credentials, and private test logs stay outside Git.
 
 ## Responsible Use
 

@@ -9,7 +9,7 @@ BAUD = 115200
 class SerialPanel:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"Hizmos Live Serial Panel - {PORT}")
+        self.root.title(f"Blue Box Live Serial Panel - {PORT}")
         self.root.geometry("700x500")
 
         # Set up a dark hacker-style theme

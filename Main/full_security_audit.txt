@@ -1,5 +1,5 @@
 ================================================================================
-       HIZMOS BLUE-BOX ESP32-S3 FIRMWARE — FULL SECURITY & BUG AUDIT
+       BLUE BOX ESP32-S3 FIRMWARE FULL SECURITY AND BUG AUDIT
 ================================================================================
 Date:     2026-06-13
 Auditors: 4 independent automated audit agents
@@ -175,7 +175,7 @@ Fix:      return; instead of while(1);
 
 HIGH-001: BLE MOUSE — NO AUTHENTICATION/ENCRYPTION
 File:     ble-mouse.ino, lines 10-46
-Impact:   BLE HID service "hizmos" has no pairing, no PIN, no encryption.
+Impact:   BLE HID service has no pairing, no PIN, no encryption.
           Any nearby device can connect and inject mouse movements.
 
 HIGH-002: BLE SCANNER — ACTIVE SCAN EXPOSES DEVICE MAC

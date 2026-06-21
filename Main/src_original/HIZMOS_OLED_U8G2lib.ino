@@ -10,7 +10,7 @@
 
               — CREATED BY HIKTRON —
 
-   - HIZMOS IS A FLIPPER ZERO REPLICA 'OPEN SOURCE' -
+   - BLUE BOX IS AN OPEN SOURCE PORTABLE SECURITY TOOL -
               
              ......... DEVELOPERS ........
             {YOUSSEF I HIKAL && OMAR KAMEL} 
@@ -138,7 +138,7 @@ int wifi_scrollOffset = 0;
 bool wifi_inDetail = false;
 bool wifi_inAttackMenu = false;
 
-//BleMouse mouse_ble("hizmos", "hizmos", 100);
+//BleMouse mouse_ble("Blue Box", "Blue Box", 100);
 
 
 
@@ -1075,7 +1075,7 @@ void setup() {
   while (!Serial && millis() - startWait < 4000) {
     delay(10);
   }
-  Serial.println("--- HIZMOS BOOT START ---");
+  Serial.println("--- BLUE BOX BOOT START ---");
 
   // --- DIAGNOSTIC LED CODE ---
   rtcBootCount++;
@@ -1176,7 +1176,7 @@ void setup() {
   Serial.println("Deactivating SD card (no card connected)...");
   deactivateSD();
   
-  Serial.println("--- HIZMOS BOOT SUCCESSFUL ---");
+  Serial.println("--- BLUE BOX BOOT SUCCESSFUL ---");
 }
 
 #define HEADLESS_TEST_MODE 1

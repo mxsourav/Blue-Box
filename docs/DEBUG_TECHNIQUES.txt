@@ -1,9 +1,9 @@
 ================================================================================
-              HIZMOS FIRMWARE — MAJOR BUG SOLVING TECHNIQUES
+              BLUE BOX FIRMWARE MAJOR BUG SOLVING TECHNIQUES
               Debug Methodology & Post-Mortem Documentation
 ================================================================================
 
-PROJECT  : Gaar Fata — HIZMOS Flipper Zero Replica
+PROJECT  : Gaar Fata Blue Box
 BOARD    : ESP32-S3
 
 ================================================================================

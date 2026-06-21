@@ -104,9 +104,8 @@ static const unsigned char image_wit201i_hizmos_oledhizmos_oled_bits[] U8X8_PROG
 
 
 
-    // wit201i#hizmos_oledhizmos_oled
+    // splash bitmap
     u8g2.drawXBMP(3, 6, 37, 53, image_wit201i_hizmos_oledhizmos_oled_bits);
 
     u8g2.sendBuffer();
 }
-

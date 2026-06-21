@@ -146,7 +146,7 @@ void setup() {
   u8g2.begin();
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.drawStr(10, 20, "HIZMOS STAGE INIT");
+  u8g2.drawStr(10, 20, "BLUE BOX INIT");
   u8g2.setCursor(10, 40);
   u8g2.printf("STAGE: %d", INTEGRATION_STAGE);
   u8g2.sendBuffer();
@@ -273,7 +273,7 @@ void loop() {
     lastOledDraw = millis();
     u8g2.clearBuffer();
     u8g2.drawFrame(0, 0, 128, 64);
-    u8g2.drawStr(5, 12, "HIZMOS HEALTH");
+    u8g2.drawStr(5, 12, "BLUE BOX HEALTH");
     u8g2.setCursor(5, 24); u8g2.printf("Uptime: %lu s", millis() / 1000);
     u8g2.setCursor(5, 36); u8g2.printf("Heap: %lu B", esp_get_free_heap_size());
 #if INTEGRATION_STAGE >= 1

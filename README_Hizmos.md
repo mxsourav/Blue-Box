@@ -1,8 +1,8 @@
 <img width="160" height="160" alt="232096427-removebg-preview" src="https://github.com/user-attachments/assets/5dab2d59-6904-4110-a1c2-1896bf10f551" />
 
-📖 Explore the HIZMOS Wiki
+Explore the Blue Box Wiki
 
-Dive into the complete HIZMOS story — from the first prototype to the fully‑loaded powerhouse it is today.
+Dive into the complete Blue Box story from the first prototype to the current toolset.
 The Wiki includes detailed hardware breakdowns, firmware tutorials, RF labs, NFC guides, BLE tools, and everything you need to master your device.
 
 From multi‑band RF analysis to advanced replay techniques, the Wiki walks you through every feature step‑by‑step.
@@ -10,8 +10,8 @@ Click here to explore the full Wiki!
 
 🌟 About the Project
 
-HIZMOS is an ultra‑powerful, open‑source, next‑generation multi‑tool designed for creators, pentesters, and STEM learners.
-Built on the ESP32‑S3, HIZMOS brings together:
+Blue Box is an open-source embedded multi-tool designed for creators, pentesters, and STEM learners.
+Built on the ESP32-S3, Blue Box brings together:
 
 📡 Wi-Fi 6 Dual-Band
 (thanks for the esp32 s3 + esp32 c5 archeticture)
@@ -35,7 +35,7 @@ IR TX/RX
 🧰 A full toolkit for wireless testing, protocol analysis, signal visualization, data logging, and custom app development
 
 Designed to be more capable, more open, and more affordable than anything in its class —
-HIZMOS is your all‑in‑one platform for wireless experimentation, education, and innovation.
+Blue Box is a platform for wireless experimentation, education, and innovation.
 
 ![WhatsApp Image 2025-08-02 at 23 33 46_52c6faf6](https://github.com/user-attachments/assets/f6f69546-7636-4b5a-8ea0-cbe0d977c6f9)
 

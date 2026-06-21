@@ -92,7 +92,7 @@ static const unsigned char image_wit201i_hizmos_oledhizmos_oled_bits[] U8X8_PROG
     u8g2.setBitmapMode(1);
     // Layer 1
     u8g2.setFont(u8g2_font_profont17_tr);
-    u8g2.drawStr(44, 19, "HIZMOS V1");
+    u8g2.drawStr(44, 19, "BLUE BOX");
 
     // Layer 3
     u8g2.setFont(u8g2_font_haxrcorp4089_tr);
@@ -105,9 +105,8 @@ static const unsigned char image_wit201i_hizmos_oledhizmos_oled_bits[] U8X8_PROG
     // cards_hearts
     u8g2.drawXBMP(107, 43, 15, 16, image_cards_hearts_bits);
 
-    // wit201i#hizmos_oledhizmos_oled
+    // splash bitmap
     u8g2.drawXBMP(3, 6, 37, 53, image_wit201i_hizmos_oledhizmos_oled_bits);
 
     u8g2.sendBuffer();
 }
-

@@ -30,7 +30,7 @@ void recvIR() {
     u8g2.clearBuffer();
     u8g2.setFontMode(1);
     u8g2.setBitmapMode(1);
-    // hizmos_oled
+    // splash_oled
     u8g2.drawXBMP(86, 5, 37, 53, image_hizmos_oled_bits);
 
     // Layer 2

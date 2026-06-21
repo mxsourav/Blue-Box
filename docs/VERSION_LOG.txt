@@ -1,9 +1,9 @@
 ================================================================================
-                        HIZMOS FIRMWARE — VERSION LOG
+                        BLUE BOX FIRMWARE VERSION LOG
                         (Major Changes Only — Minor Skipped)
 ================================================================================
 
-PROJECT  : Gaar Fata — HIZMOS Flipper Zero Replica
+PROJECT  : Gaar Fata Blue Box
 BOARD    : ESP32-S3 (N16R8 / N8R2)
 DISPLAY  : SH1106 1.3" OLED (128x64) via I2C
 AUTHOR   : Custom Build
@@ -16,7 +16,7 @@ STARTED  : 2026-06-02
 ------------------------------------------------------------------------------
  v1.0.0 — 2026-06-02 — INITIAL STOCK FORK + CUSTOM PIN REMAP
 ------------------------------------------------------------------------------
- SOURCE   : Hizmos-main (HIKTRON Open Source)
+ SOURCE   : Original open source firmware base
  CHANGE   : Full GPIO button remap for custom ESP32-S3 wiring layout
  DETAILS  :
    • BTN_UP      :  GPIO 4  →  GPIO 5

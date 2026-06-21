@@ -1,5 +1,5 @@
 ================================================================================
-              HIZMOS BLUE-BOX — BUG FIX SUMMARY
+              BLUE BOX BUG FIX SUMMARY
 ================================================================================
 Date:    2026-06-13
 Total Bugs Found:     88 (deduplicated across 4 auditors)

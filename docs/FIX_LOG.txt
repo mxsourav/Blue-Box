@@ -1,8 +1,8 @@
 ================================================================================
-                         HIZMOS FIRMWARE — FIX LOG
+                         BLUE BOX FIRMWARE FIX LOG
 ================================================================================
 
-PROJECT  : Gaar Fata — HIZMOS Flipper Zero Replica
+PROJECT  : Gaar Fata Blue Box
 BOARD    : ESP32-S3
 
 ================================================================================
@@ -31,7 +31,7 @@ BOARD    : ESP32-S3
    #define BTN_LEFT   7
    #define BTN_RIGHT  4
  REASON        : Custom ESP32-S3 PCB/wiring uses different GPIO assignments
-                 than the original Hizmos reference design.
+                 than the original reference design.
  VERIFIED BY   : Compile test → Flash → Button press confirmation
  SIDE EFFECTS  : GPIO 10/11 conflict with nRF24 radio1 (see BUG #001)
 
