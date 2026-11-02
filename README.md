@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.png" alt="Blue Box Banner" width="100%">
+</p>
+
 # Blue Box
 
 Blue Box is a portable defensive cybersecurity system for field diagnostics, signal awareness, and hardware-side security research.
